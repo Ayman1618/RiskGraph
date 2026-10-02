@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RiskGraph — Identity & Transaction Risk Intelligence</title>
+  <meta name="description" content="RiskGraph is a real-time fraud and identity risk operations platform providing transaction monitoring, identity graph analysis, and data quality reporting." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Sidebar Navigation -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="logo-mark">RG</div>
+      <div class="logo-text">
+        <span class="logo-name">RiskGraph</span>
+        <span class="logo-tagline">Risk Intelligence</span>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <span class="nav-section-label">Operations</span>
+      <button class="nav-item active" data-page="overview" onclick="navigate('overview')">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Overview
+      </button>
+      <button class="nav-item" data-page="transactions" onclick="navigate('transactions')">
+        <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+        Transactions
+      </button>
+      <button class="nav-item" data-page="investigations" onclick="navigate('investigations')">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        Investigations
+      </button>
+    </div>
+
+    <div class="nav-section">
+      <span class="nav-section-label">Intelligence</span>
+      <button class="nav-item" data-page="identity-graph" onclick="navigate('identity-graph')">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><line x1="12" y1="7" x2="5" y2="17"/><line x1="12" y1="7" x2="19" y2="17"/></svg>
+        Identity Graph
+      </button>
+      <button class="nav-item" data-page="risk-signals" onclick="navigate('risk-signals')">
+        <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Risk Signals
+      </button>
+    </div>
+
+    <div class="nav-section">
+      <span class="nav-section-label">Platform</span>
+      <button class="nav-item" data-page="data-quality" onclick="navigate('data-quality')">
+        <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Data Quality
+      </button>
+      <button class="nav-item" data-page="pipelines" onclick="navigate('pipelines')">
+        <svg viewBox="0 0 24 24"><rect x="2" y="7" width="6" height="10" rx="1"/><rect x="9" y="4" width="6" height="16" rx="1"/><rect x="16" y="9" width="6" height="8" rx="1"/></svg>
+        Pipelines
+      </button>
+      <button class="nav-item" data-page="system-health" onclick="navigate('system-health')">
+        <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        System Health
+      </button>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="env-badge">LOCAL</div>
+      <span class="env-label">riskgraph:8000</span>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="main-content" id="main-content">
+
+    <!-- Top Bar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <h1 class="page-title" id="page-title">Overview</h1>
+        <span class="page-subtitle" id="page-subtitle">Operational command center</span>
+      </div>
+      <div class="topbar-right">
+        <div class="api-status" id="api-status">
+          <span class="status-dot" id="api-dot"></span>
+          <span id="api-status-text">Checking...</span>
+        </div>
+        <button class="btn-icon" onclick="refreshCurrentPage()" title="Refresh">
+          <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Page: Overview -->
+    <div class="page active" id="page-overview">
+      <div class="stats-grid" id="overview-stats">
+        <div class="stat-card loading" id="stat-total"></div>
+        <div class="stat-card loading" id="stat-approved"></div>
+        <div class="stat-card loading" id="stat-review"></div>
+        <div class="stat-card loading" id="stat-blocked"></div>
+        <div class="stat-card loading" id="stat-gmv"></div>
+        <div class="stat-card loading" id="stat-risk-score"></div>
+      </div>
+
+      <div class="content-row">
+        <div class="panel flex-2" id="panel-decision-chart">
+          <div class="panel-header">
+            <span class="panel-title">Decision Distribution</span>
+            <span class="panel-badge">Live</span>
+          </div>
+          <div class="panel-body">
+            <div id="decision-chart-container" style="position:relative; height:200px;"></div>
+          </div>
+        </div>
+
+        <div class="panel flex-1" id="panel-fraud-rings">
+          <div class="panel-header">
+            <span class="panel-title">Fraud Rings Detected</span>
+          </div>
+          <div class="panel-body" id="fraud-rings-summary">
+            <div class="loading-placeholder">Loading...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" id="panel-recent-high-risk">
+        <div class="panel-header">
+          <span class="panel-title">High Risk Transactions</span>
+          <a class="panel-link" onclick="navigate('transactions')">View all →</a>
+        </div>
+        <div class="panel-body">
+          <div id="recent-high-risk-table"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Page: Transactions -->
+    <div class="page" id="page-transactions">
+      <div class="toolbar">
+        <div class="search-box">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="text" id="tx-search" placeholder="Search transaction ID, user, IP..." oninput="debounceSearch()" />
+        </div>
+        <select class="filter-select" id="tx-decision-filter" onchange="loadTransactions()">
+          <option value="">All Decisions</option>
+          <option value="APPROVE">Approved</option>
+          <option value="REVIEW">Review</option>
+          <option value="BLOCK">Blocked</option>
+        </select>
+        <input type="number" class="filter-input" id="tx-min-risk" placeholder="Min risk" min="0" max="100" onchange="loadTransactions()" />
+        <input type="number" class="filter-input" id="tx-max-risk" placeholder="Max risk" min="0" max="100" onchange="loadTransactions()" />
+        <button class="btn-secondary" onclick="clearFilters()">Clear</button>
+        <button class="btn-primary" onclick="loadTransactions()">
+          <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          Refresh
+        </button>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">Transactions</span>
+          <span class="panel-meta" id="tx-count-label">—</span>
+        </div>
+        <div class="panel-body no-padding">
+          <div id="transactions-table-container">
+            <div class="loading-placeholder">Loading transactions...</div>
+          </div>
+        </div>
+        <div class="pagination" id="tx-pagination"></div>
+      </div>
+    </div>
+
+    <!-- Page: Investigations (Transaction Detail) -->
+    <div class="page" id="page-investigations">
+      <div class="investigations-layout">
+        <div class="investigations-list panel">
+          <div class="panel-header">
+            <span class="panel-title">Blocked & Under Review</span>
+          </div>
+          <div class="panel-body no-padding" id="investigations-list-container">
+            <div class="loading-placeholder">Loading...</div>
+          </div>
+        </div>
+        <div class="investigations-detail" id="investigation-detail">
+          <div class="empty-state">
+            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <p>Select a transaction to investigate</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Page: Identity Graph -->
+    <div class="page" id="page-identity-graph">
+      <div class="graph-layout">
+        <div class="graph-controls panel">
+          <div class="panel-header">
+            <span class="panel-title">User Lookup</span>
+          </div>
+          <div class="panel-body">
+            <label class="field-label">User ID</label>
+            <input type="text" class="field-input" id="graph-user-id" placeholder="usr_abc123..." />
+            <label class="field-label">Depth</label>
+            <select class="filter-select full-width" id="graph-depth">
+              <option value="1">1 hop</option>
+              <option value="2" selected>2 hops</option>
+              <option value="3">3 hops</option>
+            </select>
+            <button class="btn-primary full-width" onclick="loadUserGraph()">Load Graph</button>
+          </div>
+          <div class="panel-header" style="margin-top: 16px;">
+            <span class="panel-title">Fraud Rings</span>
+          </div>
+          <div class="panel-body" id="graph-rings-list">
+            <div class="loading-placeholder">Loading rings...</div>
+          </div>
+        </div>
+        <div class="graph-canvas-wrap panel flex-1">
+          <div class="panel-header">
+            <span class="panel-title">Identity Graph</span>
+            <span class="panel-meta" id="graph-node-count">—</span>
+          </div>
+          <div class="panel-body" style="padding:0; position:relative; height: 600px;">
+            <div id="graph-empty" class="empty-state" style="position:absolute; inset:0; z-index:1;">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><line x1="12" y1="7" x2="5" y2="17"/><line x1="12" y1="7" x2="19" y2="17"/></svg>
+              <p>Enter a user ID to explore the identity graph</p>
+            </div>
+            <svg id="graph-svg" width="100%" height="100%"></svg>
+            <div class="graph-legend">
+              <div class="legend-item"><span class="legend-dot user"></span>User</div>
+              <div class="legend-item"><span class="legend-dot device"></span>Device</div>
+              <div class="legend-item"><span class="legend-dot ip"></span>IP Address</div>
+              <div class="legend-item"><span class="legend-dot merchant"></span>Merchant</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Page: Risk Signals -->
+    <div class="page" id="page-risk-signals">
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">Active Risk Rules</span>
+          <span class="panel-meta" id="rules-count">—</span>
+        </div>
+        <div class="panel-body" id="risk-rules-container">
+          <div class="loading-placeholder">Loading rules...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Page: Data Quality -->
+    <div class="page" id="page-data-quality">
+      <div class="stats-grid" id="dq-stats-grid">
+        <div class="stat-card loading"></div>
+        <div class="stat-card loading"></div>
+        <div class="stat-card loading"></div>
+        <div class="stat-card loading"></div>
+      </div>
+      <div class="panel" style="margin-top:20px;">
+        <div class="panel-header">
+          <span class="panel-title">Check Results</span>
+          <span class="panel-meta" id="dq-dataset-label">—</span>
+        </div>
+        <div class="panel-body" id="dq-checks-container">
+          <div class="loading-placeholder">Running data quality checks...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Page: Pipelines -->
+    <div class="page" id="page-pipelines">
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">Pipeline & Storage Status</span>
+          <span class="panel-badge" id="pipeline-checked-at">—</span>
+        </div>
+        <div class="panel-body" id="pipelines-container">
+          <div class="loading-placeholder">Checking components...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Page: System Health -->
+    <div class="page" id="page-system-health">
+      <div class="health-grid" id="health-grid">
+        <div class="loading-placeholder">Checking services...</div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Transaction Detail Modal -->
+  <div class="modal-overlay" id="tx-modal" onclick="closeTxModal(event)">
+    <div class="modal" id="tx-modal-content">
+      <button class="modal-close" onclick="closeTxModal()">✕</button>
+      <div id="tx-modal-body">Loading...</div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
