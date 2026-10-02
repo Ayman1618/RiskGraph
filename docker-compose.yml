@@ -1,0 +1,216 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # 1. Messaging & Streaming Backbone (Kafka)
+  # ==========================================
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    container_name: riskgraph-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    healthcheck:
+      test: ["CMD-SHELL", "echo srvr | nc localhost 2181 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: riskgraph-kafka
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  kafka-init:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: riskgraph-kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: [ '/bin/sh', '-c' ]
+    command: |
+      "
+      # Block until Kafka is reachable
+      kafka-topics --bootstrap-server kafka:29092 --list
+
+      echo -e 'Creating Kafka topics...'
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic fraud.transactions.raw --replication-factor 1 --partitions 4
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic fraud.identity.raw --replication-factor 1 --partitions 4
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic fraud.alerts --replication-factor 1 --partitions 2
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic fraud.dlq --replication-factor 1 --partitions 1
+
+      echo -e 'Successfully created Kafka topics:'
+      kafka-topics --bootstrap-server kafka:29092 --list
+      "
+
+  # ==========================================
+  # 2. Relational Operational Store (PostgreSQL)
+  # ==========================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: riskgraph-postgres
+    environment:
+      POSTGRES_USER: riskgraph_user
+      POSTGRES_PASSWORD: riskgraph_secure_pass
+      POSTGRES_DB: riskgraph
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./sql/migrations:/docker-entrypoint-initdb.d
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U riskgraph_user -d riskgraph"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================
+  # 3. Identity Graph Database (Neo4j)
+  # ==========================================
+  neo4j:
+    image: neo4j:5.20.0-community
+    container_name: riskgraph-neo4j
+    ports:
+      - "7474:7474" # HTTP Browser
+      - "7687:7687" # Bolt Protocol
+    environment:
+      NEO4J_AUTH: neo4j/riskgraph_graph_pass
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_dbms_security_procedures_unrestricted: "apoc.*,gds.*"
+    volumes:
+      - neo4j_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================
+  # 4. Redis In-Memory Velocity & Blacklist
+  # ==========================================
+  redis:
+    image: redis:7.2-alpine
+    container_name: riskgraph-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================
+  # 5. S3-Compatible Local Lakehouse (LocalStack)
+  # ==========================================
+  localstack:
+    image: localstack/localstack:3.4.0
+    container_name: riskgraph-localstack
+    ports:
+      - "4566:4566"
+    environment:
+      SERVICES: s3
+      AWS_DEFAULT_REGION: us-east-1
+    volumes:
+      - ./deploy/localstack/init_s3.sh:/etc/localstack/init/ready.d/init_s3.sh
+      - localstack_data:/var/lib/localstack
+    healthcheck:
+      test: ["CMD-SHELL", "awslocal s3 ls || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================
+  # 6. Real-Time Risk & Ingestion API (FastAPI)
+  # ==========================================
+  api:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile.api
+    container_name: riskgraph-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      ENVIRONMENT: local
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: riskgraph
+      POSTGRES_USER: riskgraph_user
+      POSTGRES_PASSWORD: riskgraph_secure_pass
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: riskgraph_graph_pass
+      S3_ENDPOINT_URL: http://localstack:4566
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================
+  # 7. Observability: Prometheus & Grafana
+  # ==========================================
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    container_name: riskgraph-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - api
+
+  grafana:
+    image: grafana/grafana:11.0.0
+    container_name: riskgraph-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deploy/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+
+volumes:
+  postgres_data:
+  neo4j_data:
+  redis_data:
+  localstack_data:

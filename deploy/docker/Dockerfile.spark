@@ -1,0 +1,22 @@
+FROM apache/spark:3.5.1-scala2.12-java17-python3-ubuntu
+
+USER root
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3-pip \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip3 install --no-cache-dir -r requirements.txt
+
+COPY src/ ./src/
+COPY sql/ ./sql/
+
+USER 185
