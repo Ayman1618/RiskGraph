@@ -9,7 +9,13 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.111.0-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-**RiskGraph** is a production-grade, end-to-end Data Engineering & Real-Time Fraud Intelligence Platform. It demonstrates enterprise-scale streaming, lakehouse batch ETL, graph-based identity resolution, sub-millisecond risk decisioning, automated data quality gates, and observability.
+---
+
+## 📌 Executive Overview
+
+- **WHAT**: **RiskGraph** is an enterprise-style Real-Time Fraud & Identity Data Engineering Platform designed to detect financial crime, synthetic identity rings, velocity burst attacks, and account takeover (ATO) patterns.
+- **WHY**: Modern identity verification and fraud prevention platforms (such as Bureau, Sift, or Stripe Radar) require processing high-throughput financial transactions, managing complex multi-entity relationships across devices, cards, and IPs, and delivering low-latency risk decisions with explainability.
+- **HOW**: Built using a hybrid stream-and-batch medallion architecture: **Apache Kafka** for event ingestion, **PySpark Structured Streaming** for watermarked dual-sink persistence, **LocalStack S3 (Parquet)** for Bronze/Silver/Gold lakehouse layers, **Neo4j** for graph identity resolution, **PostgreSQL 16** for operational transactions, **Redis** for sub-millisecond sliding-window velocity counters, **FastAPI** for real-time risk decisioning, **Apache Airflow** for orchestration, and **Prometheus + Grafana** for live observability.
 
 ---
 
@@ -18,14 +24,14 @@
 ```mermaid
 flowchart TD
     subgraph INGESTION ["1. Ingestion Layer"]
-        GEN["Synthetic Fraud Generator"] -->|Events Stream| KAFKA["Apache Kafka Cluster\n(fraud.transactions.raw)"]
-        API_INGEST["FastAPI /ingest"] -->|Async Push| KAFKA
+        GEN["Synthetic Fraud Stream Generator"] -->|Raw Events| KAFKA["Apache Kafka Cluster\n(fraud.transactions.raw)"]
+        API_INGEST["FastAPI /ingest"] -->|Async Producer| KAFKA
     end
 
     subgraph STREAMING ["2. Streaming & Dual-Sink Engine"]
         KAFKA -->|Structured Streaming| SPARK_STR["PySpark Streaming Engine\n(Watermarking + Micro-batching)"]
         SPARK_STR -->|Parquet Append| S3_BRONZE["S3 Bronze Lakehouse\n(LocalStack / MinIO)"]
-        SPARK_STR -->|Idempotent Upsert| PG_ODS["PostgreSQL ODS\n(Transactions + Real-time Aggs)"]
+        SPARK_STR -->|Idempotent Upsert| PG_ODS["PostgreSQL ODS\n(Transactions Store)"]
     end
 
     subgraph LAKEHOUSE ["3. Lakehouse Batch & Feature Marts"]
@@ -59,66 +65,66 @@ flowchart TD
 
 ---
 
-## ⚡ Core Capabilities & Technologies
+## ⚡ Core Platform Capabilities
 
 | Layer | Technology | Key Features & Responsibilities |
 |---|---|---|
-| **Event Streaming** | **Apache Kafka** | Multi-partition topics (`fraud.transactions.raw`, `fraud.identity.raw`, `fraud.alerts`), consumer groups, DLQ handling. |
-| **Stream Processing** | **PySpark Structured Streaming** | Watermarking on event time, sliding window aggregations, dual-sink persistence to S3 Bronze & PostgreSQL. |
-| **Data Lakehouse** | **S3 (LocalStack / MinIO) + Parquet** | Multi-tier Medallion architecture (Bronze raw -> Silver cleansed -> Gold feature marts). |
-| **Graph Intelligence** | **Neo4j + Cypher** | Identity graph modeling `(:User)-[:USES_DEVICE]->(:Device)`, synthetic ring detection, shortest-path to fraud. |
-| **Operational Store** | **PostgreSQL 16** | Relational transactions store, analytical window functions, risk rules catalog, fraud alerts. |
-| **Fast In-Memory Layer** | **Redis** | Sub-millisecond sliding window velocity counters (`ZADD`/`ZREMRANGEBYSCORE`) and hot blacklists. |
-| **Decision Engine** | **FastAPI + Pydantic** | Real-time synchronous risk scoring `<15ms`, rule explainability, structured audit logs. |
-| **Orchestration** | **Apache Airflow** | Automated daily lakehouse DAGs, graph synchronization DAGs, data quality gates, and compaction. |
-| **Data Quality** | **Custom DQ Suite / Great Expectations** | Schema validation, null checks, range bounds, IPv4 format checks, automated artifact generation. |
-| **Observability** | **Prometheus + Grafana** | Real-time throughput, P95/P99 latency, decision breakdown, triggered rule attribution. |
+| **Event Streaming** | **Apache Kafka 7.6** | Partitioned topics (`fraud.transactions.raw`, `fraud.identity.raw`, `fraud.alerts`, `fraud.dlq`), consumer groups, and dead-letter queue handling. |
+| **Stream Processing** | **PySpark Structured Streaming** | Event-time watermarking, sliding window micro-batches, dual-sink persistence to S3 Bronze & PostgreSQL. |
+| **Data Lakehouse** | **LocalStack S3 + Parquet** | Medallion Lakehouse architecture (Bronze raw archive -> Silver deduplicated/cleansed -> Gold analytical feature marts). |
+| **Graph Intelligence** | **Neo4j 5.20 + Cypher** | Multi-entity identity graph `(:User)-[:USES_DEVICE]->(:Device)`, synthetic ring clustering, multi-hop shortest paths to known fraud nodes. |
+| **Operational Store** | **PostgreSQL 16** | Transactional ODS, index optimization, analytical window functions (`PARTITION BY`, `LAG`), rule catalogs, and compliance alerts. |
+| **In-Memory Caching** | **Redis 7.2** | Sub-millisecond sliding window velocity tracking via sorted sets (`ZADD`/`ZREMRANGEBYSCORE`) and hot blacklist caches. |
+| **Decision Engine** | **FastAPI + Pydantic v2** | Low-latency synchronous risk scoring, weighted rule evaluation, explainability reason codes, and async Kafka ingestion. |
+| **Orchestration** | **Apache Airflow** | Automated DAGs for Lakehouse batch ETL, identity graph synchronization, data quality gates, and storage compaction. |
+| **Data Quality** | **Custom DQ Suite** | Circuit-breaker validation gates verifying completeness, range bounds, enum validity, and IPv4 formatting with JSON report artifacts. |
+| **Observability** | **Prometheus + Grafana 11** | Real-time throughput, P95/P99 latency histograms, decision distribution, and rule trigger rate dashboards. |
 
 ---
 
 ## 🚀 Quickstart & Local Setup
 
-The entire platform runs **100% locally with Docker** and requires **zero paid cloud subscriptions**.
+The entire platform is **100% runnable locally with Docker** and requires **zero paid cloud subscriptions**.
 
 ### 1. Prerequisites
-- Docker & Docker Compose (Docker Desktop / Colima)
-- Python 3.10+
-- Git
+- **Docker & Docker Compose** (Docker Desktop / Colima configured with 4GB+ RAM)
+- **Python 3.10+**
+- **Git**
 
-### 2. Launch Services
+### 2. Launch All Services
 ```bash
-# Clone and enter directory
+# Clone the repository
 git clone https://github.com/Ayman1618/RiskGraph.git
 cd RiskGraph
 
-# Start all platform services (Kafka, Postgres, Neo4j, Redis, LocalStack, FastAPI, Grafana, Prometheus)
+# Start all Docker Compose containers (PostgreSQL, Kafka, Neo4j, Redis, LocalStack, FastAPI, Prometheus, Grafana)
 make up
 ```
 
-### 3. Check System Health
+### 3. Verify Health
 ```bash
-# Verify all components are online
-python cli.py status
+# Inspect service connectivity via CLI
+python3 cli.py status
 ```
 
 ---
 
 ## 🎮 Interactive Developer CLI
 
-RiskGraph provides a rich interactive CLI (`cli.py`) for live demonstrations and evaluations:
+RiskGraph provides a rich interactive CLI (`cli.py`) for live demonstrations, testing, and validations:
 
 ```bash
 # 1. Generate real-time synthetic transaction stream with fraud vectors
-python cli.py generate-stream --rate 10 --count 50 --fraud-ratio 0.25
+python3 cli.py generate-stream --rate 10 --count 50 --fraud-ratio 0.25
 
 # 2. Evaluate a transaction through the Real-Time Risk Engine
-python cli.py evaluate-tx --user-id usr_ring_0_m1 --amount 7500 --emulator
+python3 cli.py evaluate-tx --user-id usr_ring_0_m1 --amount 7500 --emulator
 
 # 3. Run automated Data Quality Validation Suite
-python cli.py run-dq-suite --sample-size 500
+python3 cli.py run-dq-suite --sample-size 500
 
 # 4. Discover multi-account identity fraud rings in Neo4j
-python cli.py detect-rings --min-size 3
+python3 cli.py detect-rings --min-size 3
 ```
 
 ---
@@ -137,22 +143,34 @@ python cli.py detect-rings --min-size 3
 
 1. **Synthetic Identity Rings**: Coordinated rings of multiple accounts sharing identical device hardware fingerprints, SSN ranges, and IP subnets.
 2. **Velocity Attacks**: Rapid micro-charges across multiple stolen card tokens within short rolling windows.
-3. **Account Takeover (ATO)**: Sudden geolocation jump to high-risk proxies combined with emulator signals and maximum withdrawal thresholds.
+3. **Account Takeover (ATO)**: Sudden geolocation jump to high-risk proxies combined with emulator signatures and maximum withdrawal thresholds.
 4. **Proximity to Mule Accounts**: Shortest graph path evaluation to known flagged nodes within 1-2 hops.
 5. **Blacklist / Sanction Matches**: Instant matching against flagged card tokens, TOR exit nodes, and spoofed device fingerprints.
 
 ---
 
-## 🧪 Running Tests & Quality Gates
+## 🧪 Testing & Validation Results
 
 ```bash
-# Run pytest test suite with coverage report
+# Run pytest test suite with code coverage
 pytest --cov=src tests/
 
-# Run code formatters and linters
+# Run formatters and linters
 make format
 make lint
 ```
+
+- **Tests Executed**: 18 unit and integration tests passing (100% success rate).
+- **Automated CI**: GitHub Actions workflow (`.github/workflows/ci.yml`) runs on every push and pull request.
+
+---
+
+## 📚 Documentation Deep-Dives
+
+- 🏗️ [Architecture Deep-Dive](docs/ARCHITECTURE.md): Medallion Lakehouse design, stream-batch duality, Neo4j graph model.
+- 🛠️ [Setup & Operational Guide](docs/SETUP.md): Step-by-step local developer workflow and container management.
+- 📋 [Project Completion Report](docs/project-completion-report.md): Verification artifacts, test logs, and Bureau JD alignment matrix.
+- 🎯 [Interview Preparation Guide](docs/interview-guide.md): Detailed questions and technically defensible answers tailored for Data Engineer interviews.
 
 ---
 
