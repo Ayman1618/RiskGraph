@@ -123,9 +123,9 @@ def list_transactions(
             params.append(decision.upper())
         if search:
             filters.append(
-                "(t.transaction_id ILIKE %s OR t.user_id ILIKE %s OR t.ip_address ILIKE %s)"
+                "(t.transaction_id ILIKE %s OR t.user_id ILIKE %s OR t.ip_address ILIKE %s OR t.device_id ILIKE %s)"
             )
-            params.extend([f"%{search}%", f"%{search}%", f"%{search}%"])
+            params.extend([f"%{search}%", f"%{search}%", f"%{search}%", f"%{search}%"])
         if min_risk is not None:
             filters.append("t.risk_score >= %s")
             params.append(min_risk)
@@ -202,6 +202,23 @@ def get_transaction_detail(
                     result["triggered_rules"] = json.loads(rules)
                 except Exception:
                     result["triggered_rules"] = []
+
+            # Fetch related transactions for the same user
+            user_id = result.get("user_id")
+            related = []
+            if user_id:
+                cur.execute(
+                    """
+                    SELECT transaction_id, timestamp, amount, currency, decision, risk_score, merchant_id
+                    FROM transactions
+                    WHERE user_id = %s AND transaction_id != %s
+                    ORDER BY timestamp DESC
+                    LIMIT 6
+                    """,
+                    (user_id, transaction_id),
+                )
+                related = [dict(r) for r in cur.fetchall()]
+            result["related_transactions"] = related
             return result
     except HTTPException:
         raise
@@ -256,8 +273,49 @@ def get_user_subgraph(
     user_id: str,
     depth: int = Query(default=2, ge=1, le=4),
     analytics: GraphFraudAnalytics = Depends(get_graph_analytics),
+    conn=Depends(get_db_connection),
 ):
     subgraph = analytics.get_user_subgraph(user_id=user_id, depth=depth)
+    if not subgraph.get("edges") or len(subgraph.get("nodes", [])) <= 1:
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT DISTINCT device_id, ip_address, merchant_id
+                    FROM transactions
+                    WHERE user_id = %s
+                    LIMIT 8
+                    """,
+                    (user_id,),
+                )
+                rows = cur.fetchall()
+                if rows:
+                    nodes = [{"id": user_id, "label": "User", "type": "User"}]
+                    edges = []
+                    seen_nodes = {user_id}
+                    for r in rows:
+                        dev = r.get("device_id")
+                        ip = r.get("ip_address")
+                        mch = r.get("merchant_id")
+                        if dev and dev not in seen_nodes:
+                            seen_nodes.add(dev)
+                            nodes.append({"id": dev, "label": "Device", "type": "Device"})
+                            edges.append({"source": user_id, "target": dev, "type": "USES_DEVICE"})
+                        if ip and ip not in seen_nodes:
+                            seen_nodes.add(ip)
+                            nodes.append({"id": ip, "label": "IP", "type": "IP"})
+                            edges.append(
+                                {"source": user_id, "target": ip, "type": "ORIGINATED_FROM"}
+                            )
+                        if mch and mch not in seen_nodes:
+                            seen_nodes.add(mch)
+                            nodes.append({"id": mch, "label": "Merchant", "type": "Merchant"})
+                            edges.append(
+                                {"source": user_id, "target": mch, "type": "TRANSACTS_WITH"}
+                            )
+                    return {"user_id": user_id, "nodes": nodes, "edges": edges}
+        except Exception as e:
+            logger.debug(f"Transaction fallback for graph: {e}")
     return subgraph
 
 

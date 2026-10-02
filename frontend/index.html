@@ -4,302 +4,625 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>RiskGraph — Identity & Transaction Risk Intelligence</title>
-  <meta name="description" content="RiskGraph is a real-time fraud and identity risk operations platform providing transaction monitoring, identity graph analysis, and data quality reporting." />
+  <meta name="description" content="RiskGraph is a real-time financial risk intelligence platform and identity graph analytics engine for fraud prevention and operational data telemetry." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <!-- Sidebar Navigation -->
-  <nav class="sidebar" id="sidebar">
+
+<div class="app-container">
+  <!-- Left Enterprise Navigation Sidebar -->
+  <aside class="sidebar" id="app-sidebar">
     <div class="sidebar-header">
-      <div class="logo-mark">RG</div>
-      <div class="logo-text">
-        <span class="logo-name">RiskGraph</span>
-        <span class="logo-tagline">Risk Intelligence</span>
+      <div class="logo-badge">RG</div>
+      <div class="logo-info">
+        <span class="logo-title">RiskGraph</span>
+        <span class="logo-subtitle">Risk Intelligence</span>
       </div>
     </div>
 
-    <div class="nav-section">
-      <span class="nav-section-label">Operations</span>
-      <button class="nav-item active" data-page="overview" onclick="navigate('overview')">
-        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-        Overview
-      </button>
-      <button class="nav-item" data-page="transactions" onclick="navigate('transactions')">
-        <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-        Transactions
-      </button>
-      <button class="nav-item" data-page="investigations" onclick="navigate('investigations')">
-        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        Investigations
-      </button>
-    </div>
+    <div class="sidebar-nav">
+      <!-- Operations Group -->
+      <div class="nav-group">
+        <div class="nav-group-label">Operations</div>
+        <div class="nav-links">
+          <button class="nav-btn active" data-page="overview" onclick="navigate('overview')">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            Overview
+          </button>
+          <button class="nav-btn" data-page="transactions" onclick="navigate('transactions')">
+            <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            Transactions
+          </button>
+          <button class="nav-btn" data-page="investigations" onclick="navigate('investigations')">
+            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Investigations
+          </button>
+        </div>
+      </div>
 
-    <div class="nav-section">
-      <span class="nav-section-label">Intelligence</span>
-      <button class="nav-item" data-page="identity-graph" onclick="navigate('identity-graph')">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><line x1="12" y1="7" x2="5" y2="17"/><line x1="12" y1="7" x2="19" y2="17"/></svg>
-        Identity Graph
-      </button>
-      <button class="nav-item" data-page="risk-signals" onclick="navigate('risk-signals')">
-        <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-        Risk Signals
-      </button>
-    </div>
+      <!-- Intelligence Group -->
+      <div class="nav-group">
+        <div class="nav-group-label">Intelligence</div>
+        <div class="nav-links">
+          <button class="nav-btn" data-page="identity-graph" onclick="navigate('identity-graph')">
+            <svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><circle cx="6" cy="18" r="3"/><line x1="8.5" y1="7.5" x2="15.5" y2="16.5"/><line x1="6" y1="9" x2="6" y2="15"/></svg>
+            Identity Graph
+          </button>
+          <button class="nav-btn" data-page="risk-signals" onclick="navigate('risk-signals')">
+            <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            Risk Signals
+          </button>
+        </div>
+      </div>
 
-    <div class="nav-section">
-      <span class="nav-section-label">Platform</span>
-      <button class="nav-item" data-page="data-quality" onclick="navigate('data-quality')">
-        <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-        Data Quality
-      </button>
-      <button class="nav-item" data-page="pipelines" onclick="navigate('pipelines')">
-        <svg viewBox="0 0 24 24"><rect x="2" y="7" width="6" height="10" rx="1"/><rect x="9" y="4" width="6" height="16" rx="1"/><rect x="16" y="9" width="6" height="8" rx="1"/></svg>
-        Pipelines
-      </button>
-      <button class="nav-item" data-page="system-health" onclick="navigate('system-health')">
-        <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-        System Health
-      </button>
+      <!-- Data Platform Group -->
+      <div class="nav-group">
+        <div class="nav-group-label">Data Platform</div>
+        <div class="nav-links">
+          <button class="nav-btn" data-page="data-quality" onclick="navigate('data-quality')">
+            <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            Data Quality
+          </button>
+          <button class="nav-btn" data-page="pipelines" onclick="navigate('pipelines')">
+            <svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            Pipelines
+          </button>
+          <button class="nav-btn" data-page="system-health" onclick="navigate('system-health')">
+            <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            System Health
+          </button>
+        </div>
+      </div>
     </div>
 
     <div class="sidebar-footer">
-      <div class="env-badge">LOCAL</div>
-      <span class="env-label">riskgraph:8000</span>
+      <div class="env-indicator">
+        <span class="env-tag">LOCAL</span>
+        <span>docker : 8000</span>
+      </div>
+      <div class="status-dot healthy" id="sidebar-status-dot" title="Operational"></div>
     </div>
-  </nav>
+  </aside>
 
-  <!-- Main Content -->
-  <main class="main-content" id="main-content">
-
-    <!-- Top Bar -->
+  <!-- Main Content Area -->
+  <div class="main-workspace">
+    <!-- Topbar Global Navigation Context -->
     <header class="topbar">
       <div class="topbar-left">
-        <h1 class="page-title" id="page-title">Overview</h1>
-        <span class="page-subtitle" id="page-subtitle">Operational command center</span>
-      </div>
-      <div class="topbar-right">
-        <div class="api-status" id="api-status">
-          <span class="status-dot" id="api-dot"></span>
-          <span id="api-status-text">Checking...</span>
+        <div class="breadcrumb-trail" id="breadcrumb-trail">
+          <span>RiskGraph</span>
+          <span class="separator">/</span>
+          <span class="breadcrumb-current" id="breadcrumb-page-name">Overview</span>
         </div>
-        <button class="btn-icon" onclick="refreshCurrentPage()" title="Refresh">
+
+        <div class="global-search-wrap">
+          <svg class="global-search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" class="global-search-input" id="global-search" placeholder="Search tx_id, user, IP, or device..." onkeydown="handleGlobalSearch(event)" />
+        </div>
+      </div>
+
+      <div class="topbar-right">
+        <div class="system-status-pill" id="system-status-pill">
+          <span class="status-dot healthy" id="topbar-status-dot"></span>
+          <span id="topbar-status-text">Connected</span>
+        </div>
+
+        <div class="sync-timestamp" id="sync-timestamp">—</div>
+
+        <button class="btn-icon" onclick="refreshCurrentPage()" title="Refresh workspace data">
           <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
         </button>
       </div>
     </header>
 
-    <!-- Page: Overview -->
-    <div class="page active" id="page-overview">
-      <div class="stats-grid" id="overview-stats">
-        <div class="stat-card loading" id="stat-total"></div>
-        <div class="stat-card loading" id="stat-approved"></div>
-        <div class="stat-card loading" id="stat-review"></div>
-        <div class="stat-card loading" id="stat-blocked"></div>
-        <div class="stat-card loading" id="stat-gmv"></div>
-        <div class="stat-card loading" id="stat-risk-score"></div>
-      </div>
+    <!-- Page Viewport -->
+    <main class="page-viewport" id="page-viewport">
 
-      <div class="content-row">
-        <div class="panel flex-2" id="panel-decision-chart">
+      <!-- ==============================================
+           PAGE 1: OVERVIEW (RISK COMMAND CENTER)
+           ============================================== -->
+      <section class="page active" id="page-overview">
+        <div class="page-head">
+          <div>
+            <h1 class="page-heading">Risk Intelligence Overview</h1>
+            <p class="page-subheading">Operational command center & live transaction fraud evaluation</p>
+          </div>
+        </div>
+
+        <!-- Metrics Strip (Real Data Only) -->
+        <div class="metrics-strip" id="overview-metrics-strip">
+          <div class="metric-cell">
+            <span class="metric-cell-label">Total Transactions</span>
+            <span class="metric-cell-val" id="metric-tx-count">—</span>
+            <span class="metric-cell-sub" id="metric-tx-sub">Real-time ledger</span>
+          </div>
+          <div class="metric-cell">
+            <span class="metric-cell-label">GMV Monitored</span>
+            <span class="metric-cell-val" id="metric-gmv-val">—</span>
+            <span class="metric-cell-sub">Gross volume</span>
+          </div>
+          <div class="metric-cell">
+            <span class="metric-cell-label">Approved</span>
+            <span class="metric-cell-val" id="metric-approved-val">—</span>
+            <span class="metric-cell-sub pass" id="metric-approved-sub">—</span>
+          </div>
+          <div class="metric-cell">
+            <span class="metric-cell-label">Under Review</span>
+            <span class="metric-cell-val" id="metric-review-val">—</span>
+            <span class="metric-cell-sub review" id="metric-review-sub">—</span>
+          </div>
+          <div class="metric-cell">
+            <span class="metric-cell-label">Blocked</span>
+            <span class="metric-cell-val" id="metric-blocked-val">—</span>
+            <span class="metric-cell-sub alert" id="metric-blocked-sub">—</span>
+          </div>
+          <div class="metric-cell">
+            <span class="metric-cell-label">Average Risk Score</span>
+            <span class="metric-cell-val" id="metric-risk-val">—</span>
+            <span class="metric-cell-sub">0 – 100 benchmark</span>
+          </div>
+        </div>
+
+        <!-- Analytical Section Split -->
+        <div class="layout-split">
+          <!-- Left: Decision & Risk Velocity Breakdown -->
+          <div class="panel">
+            <div class="panel-header">
+              <span class="panel-title">Decision Distribution & Risk Velocity</span>
+              <span class="panel-meta" id="distribution-total-label">—</span>
+            </div>
+            <div class="panel-body">
+              <div class="distribution-bar">
+                <div class="distribution-segment approve" id="dist-bar-approve" style="width: 50%;"></div>
+                <div class="distribution-segment review" id="dist-bar-review" style="width: 30%;"></div>
+                <div class="distribution-segment block" id="dist-bar-block" style="width: 20%;"></div>
+              </div>
+
+              <div class="distribution-legend">
+                <div class="dist-legend-item">
+                  <div class="dist-legend-top">
+                    <span class="dist-dot approve"></span> Approved
+                  </div>
+                  <div class="dist-legend-val" id="dist-legend-approved">—</div>
+                  <div class="dist-legend-sub" id="dist-legend-approved-pct">Automated clearance</div>
+                </div>
+
+                <div class="dist-legend-item">
+                  <div class="dist-legend-top">
+                    <span class="dist-dot review"></span> Review Queue
+                  </div>
+                  <div class="dist-legend-val" id="dist-legend-review">—</div>
+                  <div class="dist-legend-sub" id="dist-legend-review-pct">Manual verification</div>
+                </div>
+
+                <div class="dist-legend-item">
+                  <div class="dist-legend-top">
+                    <span class="dist-dot block"></span> Blocked
+                  </div>
+                  <div class="dist-legend-val" id="dist-legend-blocked">—</div>
+                  <div class="dist-legend-sub" id="dist-legend-blocked-pct">Severe policy block</div>
+                </div>
+              </div>
+
+              <!-- Hourly volume chart -->
+              <div style="margin-top: 18px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                  <span style="font-size:11px; font-weight:600; text-transform:uppercase; color:var(--text-muted); letter-spacing:0.04em;">Hourly Transaction & Block Volumes</span>
+                  <span style="font-size:10.5px; color:var(--text-muted); font-family:var(--font-mono);">Last 24 Hours</span>
+                </div>
+                <div class="chart-container" id="overview-hourly-chart">
+                  <!-- Filled via JS -->
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Detected Fraud Syndicates & Data Pipeline Status -->
+          <div class="panel">
+            <div class="panel-header">
+              <span class="panel-title">Active Fraud Syndicates</span>
+              <span class="panel-meta">Neo4j APOC</span>
+            </div>
+            <div class="panel-body" id="overview-syndicates-body">
+              <div class="loading-box"><div class="spinner"></div><span>Querying graph clusters...</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Suspicious Transactions Live Stream -->
+        <div class="panel">
           <div class="panel-header">
-            <span class="panel-title">Decision Distribution</span>
-            <span class="panel-badge">Live</span>
+            <span class="panel-title">Critical & Suspicious Transactions</span>
+            <button class="btn-table-action" onclick="navigate('transactions')">View Full Ledger →</button>
           </div>
-          <div class="panel-body">
-            <div id="decision-chart-container" style="position:relative; height:200px;"></div>
+          <div class="panel-body no-padding">
+            <div class="table-responsive" id="overview-suspicious-table">
+              <div class="loading-box"><div class="spinner"></div><span>Loading high risk transactions...</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==============================================
+           PAGE 2: TRANSACTIONS (INSTITUTIONAL LEDGER)
+           ============================================== -->
+      <section class="page" id="page-transactions">
+        <div class="page-head">
+          <div>
+            <h1 class="page-heading">Transaction Ledger</h1>
+            <p class="page-subheading">Enterprise risk log with multi-attribute filtering & live scoring</p>
           </div>
         </div>
 
-        <div class="panel flex-1" id="panel-fraud-rings">
-          <div class="panel-header">
-            <span class="panel-title">Fraud Rings Detected</span>
-          </div>
-          <div class="panel-body" id="fraud-rings-summary">
-            <div class="loading-placeholder">Loading...</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="panel" id="panel-recent-high-risk">
-        <div class="panel-header">
-          <span class="panel-title">High Risk Transactions</span>
-          <a class="panel-link" onclick="navigate('transactions')">View all →</a>
-        </div>
-        <div class="panel-body">
-          <div id="recent-high-risk-table"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Page: Transactions -->
-    <div class="page" id="page-transactions">
-      <div class="toolbar">
-        <div class="search-box">
-          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input type="text" id="tx-search" placeholder="Search transaction ID, user, IP..." oninput="debounceSearch()" />
-        </div>
-        <select class="filter-select" id="tx-decision-filter" onchange="loadTransactions()">
-          <option value="">All Decisions</option>
-          <option value="APPROVE">Approved</option>
-          <option value="REVIEW">Review</option>
-          <option value="BLOCK">Blocked</option>
-        </select>
-        <input type="number" class="filter-input" id="tx-min-risk" placeholder="Min risk" min="0" max="100" onchange="loadTransactions()" />
-        <input type="number" class="filter-input" id="tx-max-risk" placeholder="Max risk" min="0" max="100" onchange="loadTransactions()" />
-        <button class="btn-secondary" onclick="clearFilters()">Clear</button>
-        <button class="btn-primary" onclick="loadTransactions()">
-          <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-          Refresh
-        </button>
-      </div>
-
-      <div class="panel">
-        <div class="panel-header">
-          <span class="panel-title">Transactions</span>
-          <span class="panel-meta" id="tx-count-label">—</span>
-        </div>
-        <div class="panel-body no-padding">
-          <div id="transactions-table-container">
-            <div class="loading-placeholder">Loading transactions...</div>
-          </div>
-        </div>
-        <div class="pagination" id="tx-pagination"></div>
-      </div>
-    </div>
-
-    <!-- Page: Investigations (Transaction Detail) -->
-    <div class="page" id="page-investigations">
-      <div class="investigations-layout">
-        <div class="investigations-list panel">
-          <div class="panel-header">
-            <span class="panel-title">Blocked & Under Review</span>
-          </div>
-          <div class="panel-body no-padding" id="investigations-list-container">
-            <div class="loading-placeholder">Loading...</div>
-          </div>
-        </div>
-        <div class="investigations-detail" id="investigation-detail">
-          <div class="empty-state">
-            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            <p>Select a transaction to investigate</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Page: Identity Graph -->
-    <div class="page" id="page-identity-graph">
-      <div class="graph-layout">
-        <div class="graph-controls panel">
-          <div class="panel-header">
-            <span class="panel-title">User Lookup</span>
-          </div>
-          <div class="panel-body">
-            <label class="field-label">User ID</label>
-            <input type="text" class="field-input" id="graph-user-id" placeholder="usr_abc123..." />
-            <label class="field-label">Depth</label>
-            <select class="filter-select full-width" id="graph-depth">
-              <option value="1">1 hop</option>
-              <option value="2" selected>2 hops</option>
-              <option value="3">3 hops</option>
+        <!-- Filter Toolbar -->
+        <div class="toolbar">
+          <div class="toolbar-group">
+            <input type="text" class="input-field" id="tx-search-input" placeholder="Search ID, user, IP, or device..." style="width: 240px;" oninput="debounceTxSearch()" />
+            
+            <select class="select-field" id="tx-decision-select" onchange="loadTransactions()">
+              <option value="">All Decisions</option>
+              <option value="APPROVE">Approved</option>
+              <option value="REVIEW">Review</option>
+              <option value="BLOCK">Blocked</option>
             </select>
-            <button class="btn-primary full-width" onclick="loadUserGraph()">Load Graph</button>
+
+            <input type="number" class="input-field" id="tx-min-score" placeholder="Min score" min="0" max="100" style="width: 90px;" onchange="loadTransactions()" />
+            <input type="number" class="input-field" id="tx-max-score" placeholder="Max score" min="0" max="100" style="width: 90px;" onchange="loadTransactions()" />
+
+            <button class="btn-secondary" onclick="resetTxFilters()">Reset</button>
           </div>
-          <div class="panel-header" style="margin-top: 16px;">
-            <span class="panel-title">Fraud Rings</span>
-          </div>
-          <div class="panel-body" id="graph-rings-list">
-            <div class="loading-placeholder">Loading rings...</div>
+
+          <div class="toolbar-group">
+            <button class="btn-primary" onclick="loadTransactions()">
+              <svg style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              Refresh Ledger
+            </button>
           </div>
         </div>
-        <div class="graph-canvas-wrap panel flex-1">
+
+        <!-- Table Container -->
+        <div class="panel">
           <div class="panel-header">
-            <span class="panel-title">Identity Graph</span>
-            <span class="panel-meta" id="graph-node-count">—</span>
+            <span class="panel-title">Transactions</span>
+            <span class="panel-meta" id="tx-total-count-meta">—</span>
           </div>
-          <div class="panel-body" style="padding:0; position:relative; height: 600px;">
-            <div id="graph-empty" class="empty-state" style="position:absolute; inset:0; z-index:1;">
-              <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><line x1="12" y1="7" x2="5" y2="17"/><line x1="12" y1="7" x2="19" y2="17"/></svg>
-              <p>Enter a user ID to explore the identity graph</p>
-            </div>
-            <svg id="graph-svg" width="100%" height="100%"></svg>
-            <div class="graph-legend">
-              <div class="legend-item"><span class="legend-dot user"></span>User</div>
-              <div class="legend-item"><span class="legend-dot device"></span>Device</div>
-              <div class="legend-item"><span class="legend-dot ip"></span>IP Address</div>
-              <div class="legend-item"><span class="legend-dot merchant"></span>Merchant</div>
+          <div class="panel-body no-padding">
+            <div class="table-responsive" id="tx-table-container">
+              <div class="loading-box"><div class="spinner"></div><span>Loading transaction ledger...</span></div>
             </div>
           </div>
+          <div class="pagination-strip" id="tx-pagination-strip">
+            <!-- Filled via JS -->
+          </div>
         </div>
+      </section>
+
+      <!-- ==============================================
+           PAGE 3: INVESTIGATIONS (FORENSIC WORKSPACE)
+           ============================================== -->
+      <section class="page" id="page-investigations">
+        <div class="page-head">
+          <div>
+            <h1 class="page-heading">Forensic Investigation Workspace</h1>
+            <p class="page-subheading">Case queue & forensic evidence analysis across identity and payment vectors</p>
+          </div>
+        </div>
+
+        <div class="investigation-workspace">
+          <!-- Left: Case Queue -->
+          <div class="case-queue-pane">
+            <div class="case-queue-header">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:12px; font-weight:700; text-transform:uppercase; color:var(--text-primary); letter-spacing:0.03em;">Inspection Queue</span>
+                <span style="font-size:11px; color:var(--text-muted);" id="investigation-queue-count">—</span>
+              </div>
+              <div class="case-filter-tabs">
+                <button class="case-filter-tab active" data-filter="ALL" onclick="filterCaseQueue('ALL', this)">All Suspicious</button>
+                <button class="case-filter-tab" data-filter="BLOCK" onclick="filterCaseQueue('BLOCK', this)">Blocked</button>
+                <button class="case-filter-tab" data-filter="REVIEW" onclick="filterCaseQueue('REVIEW', this)">Review</button>
+              </div>
+            </div>
+
+            <div class="case-queue-list" id="case-queue-list">
+              <div class="loading-box"><div class="spinner"></div><span>Loading queue...</span></div>
+            </div>
+          </div>
+
+          <!-- Right: Forensic Evidence Dossier -->
+          <div class="dossier-pane" id="dossier-pane">
+            <div class="dossier-empty">
+              <svg style="width:36px;height:36px;stroke:var(--border-dark);fill:none;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+              <div style="font-size:14px; font-weight:600; color:var(--text-secondary);">Select a transaction to inspect</div>
+              <p style="font-size:12px; max-width:320px;">Review risk signals, payment telemetry, connected identity graph nodes, and historical transactions.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==============================================
+           PAGE 4: IDENTITY GRAPH (NEO4J WORKSPACE)
+           ============================================== -->
+      <section class="page" id="page-identity-graph">
+        <div class="page-head">
+          <div>
+            <h1 class="page-heading">Identity Graph Intelligence</h1>
+            <p class="page-subheading">Multi-hop graph topology linking users, hardware devices, and network IPs</p>
+          </div>
+        </div>
+
+        <div class="graph-page-layout">
+          <!-- Left Controls Sidebar -->
+          <div class="graph-sidebar">
+            <div class="graph-sidebar-section">
+              <label style="font-size:11px; font-weight:600; text-transform:uppercase; color:var(--text-muted);">Root Identity Lookup</label>
+              <input type="text" class="input-field" id="graph-search-user" placeholder="Enter user_id (e.g. usr_ring_member_1)" />
+              
+              <div style="display:flex; gap:8px;">
+                <select class="select-field" id="graph-depth-select" style="flex:1;">
+                  <option value="1">1 Hop Neighborhood</option>
+                  <option value="2" selected>2 Hop Neighborhood</option>
+                  <option value="3">3 Hop Neighborhood</option>
+                </select>
+                <button class="btn-primary" onclick="loadGraphForUser()">Explore</button>
+              </div>
+            </div>
+
+            <div class="graph-sidebar-section" style="flex:1; overflow-y:auto;">
+              <span style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--text-muted); letter-spacing:0.04em;">Detected Fraud Rings</span>
+              <div id="graph-rings-container" style="display:flex; flex-direction:column; gap:6px; margin-top:6px;">
+                <div class="loading-box"><div class="spinner"></div><span>Checking rings...</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Main Graph Canvas Workspace -->
+          <div class="graph-canvas-container" id="graph-canvas-wrapper">
+            <!-- Floating Zoom & Reset Controls -->
+            <div class="graph-floating-controls">
+              <button class="btn-icon" onclick="zoomGraph(1.3)" title="Zoom in">+</button>
+              <button class="btn-icon" onclick="zoomGraph(0.7)" title="Zoom out">−</button>
+              <button class="btn-icon" onclick="resetGraphZoom()" title="Reset view">⟲</button>
+            </div>
+
+            <svg id="graph-svg"></svg>
+
+            <!-- Legend -->
+            <div class="graph-legend-strip">
+              <div class="graph-legend-item"><span class="legend-node user"></span> User</div>
+              <div class="graph-legend-item"><span class="legend-node device"></span> Device</div>
+              <div class="graph-legend-item"><span class="legend-node ip"></span> IP Address</div>
+              <div class="graph-legend-item"><span class="legend-node merchant"></span> Merchant</div>
+            </div>
+
+            <!-- Contextual Entity Inspector Drawer -->
+            <aside class="entity-inspector-drawer" id="entity-inspector">
+              <div class="inspector-header">
+                <span style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--text-muted); letter-spacing:0.04em;">Entity Inspector</span>
+                <button class="btn-icon" onclick="closeEntityInspector()">✕</button>
+              </div>
+              <div class="inspector-body" id="inspector-content">
+                <!-- Injected via JS -->
+              </div>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==============================================
+           PAGE 5: RISK SIGNALS (CATALOG)
+           ============================================== -->
+      <section class="page" id="page-risk-signals">
+        <div class="page-head">
+          <div>
+            <h1 class="page-heading">Risk Signals & Decision Rules</h1>
+            <p class="page-subheading">Production rule catalog, score contribution weights, and algorithmic thresholds</p>
+          </div>
+          <span class="panel-meta" id="signals-count-label">—</span>
+        </div>
+
+        <div class="toolbar" style="margin-bottom: 4px;">
+          <div class="toolbar-group">
+            <button class="btn-secondary active" id="filter-rule-all" onclick="filterRules('ALL', this)">All Rules</button>
+            <button class="btn-secondary" id="filter-rule-amount" onclick="filterRules('AMOUNT', this)">Amount</button>
+            <button class="btn-secondary" id="filter-rule-velocity" onclick="filterRules('VELOCITY', this)">Velocity</button>
+            <button class="btn-secondary" id="filter-rule-identity" onclick="filterRules('IDENTITY', this)">Identity & Graph</button>
+            <button class="btn-secondary" id="filter-rule-network" onclick="filterRules('NETWORK', this)">Network & IP</button>
+          </div>
+        </div>
+
+        <div class="rules-grid" id="rules-grid-container">
+          <div class="loading-box"><div class="spinner"></div><span>Loading active scoring rules...</span></div>
+        </div>
+      </section>
+
+      <!-- ==============================================
+           PAGE 6: DATA QUALITY (CONTROL ROOM)
+           ============================================== -->
+      <section class="page" id="page-data-quality">
+        <div class="page-head">
+          <div>
+            <h1 class="page-heading">Data Quality Control Room</h1>
+            <p class="page-subheading">Data engineering telemetry, completeness, integrity constraints, and schema conformance</p>
+          </div>
+          <button class="btn-primary" onclick="runLiveDqChecks()">
+            <svg style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Re-run Validation Suite
+          </button>
+        </div>
+
+        <!-- DQ Metrics Strip -->
+        <div class="metrics-strip" id="dq-metrics-strip">
+          <div class="metric-cell">
+            <span class="metric-cell-label">Records Evaluated</span>
+            <span class="metric-cell-val" id="dq-records-val">—</span>
+            <span class="metric-cell-sub">Live batch window</span>
+          </div>
+          <div class="metric-cell">
+            <span class="metric-cell-label">Checks Evaluated</span>
+            <span class="metric-cell-val" id="dq-checks-total">—</span>
+            <span class="metric-cell-sub">Verification suite</span>
+          </div>
+          <div class="metric-cell">
+            <span class="metric-cell-label">Passed Checks</span>
+            <span class="metric-cell-val" id="dq-checks-passed">—</span>
+            <span class="metric-cell-sub pass" id="dq-checks-passed-sub">—</span>
+          </div>
+          <div class="metric-cell">
+            <span class="metric-cell-label">Failed Checks</span>
+            <span class="metric-cell-val" id="dq-checks-failed">—</span>
+            <span class="metric-cell-sub" id="dq-checks-failed-sub">0 anomalies</span>
+          </div>
+          <div class="metric-cell" style="grid-column: span 2;">
+            <span class="metric-cell-label">Overall Suite Pass Rate</span>
+            <span class="metric-cell-val" id="dq-pass-rate-val">—</span>
+            <div class="dq-progress-bar-wrap">
+              <div class="dq-progress-fill" id="dq-rate-fill" style="width: 100%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DQ Checks Matrix Table -->
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">Check Execution Matrix</span>
+            <span class="panel-meta" id="dq-dataset-meta">Dataset: live_transactions</span>
+          </div>
+          <div class="panel-body no-padding">
+            <div class="table-responsive" id="dq-checks-table-container">
+              <div class="loading-box"><div class="spinner"></div><span>Evaluating dataset constraints...</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==============================================
+           PAGE 7: PIPELINES (TELEMETRY & ARCHITECTURE)
+           ============================================== -->
+      <section class="page" id="page-pipelines">
+        <div class="page-head">
+          <div>
+            <h1 class="page-heading">Pipeline Telemetry & Flow Architecture</h1>
+            <p class="page-subheading">Data engineering streaming backbone, lakehouse staging layers, and operational sinks</p>
+          </div>
+          <span class="panel-meta" id="pipeline-last-check-meta">—</span>
+        </div>
+
+        <!-- Architecture Flow Diagram -->
+        <div class="pipeline-diagram">
+          <div style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--text-muted); margin-bottom:12px; letter-spacing:0.04em;">Operational Data Flow</div>
+          <div class="diagram-stage-row">
+            <div class="stage-node active">
+              <div class="stage-name">Ingestion Source</div>
+              <div class="stage-tech">Synthetic Generator / SDK</div>
+              <div class="stage-status-indicator">● LIVE</div>
+            </div>
+
+            <div class="stage-connector"></div>
+
+            <div class="stage-node active">
+              <div class="stage-name">Apache Kafka</div>
+              <div class="stage-tech">4 Topics · 8 Partitions</div>
+              <div class="stage-status-indicator" id="flow-kafka-status">● CONNECTED</div>
+            </div>
+
+            <div class="stage-connector"></div>
+
+            <div class="stage-node active">
+              <div class="stage-name">Stream Engine</div>
+              <div class="stage-tech">PySpark / Flink Consumer</div>
+              <div class="stage-status-indicator">● ACTIVE</div>
+            </div>
+
+            <div class="stage-connector"></div>
+
+            <div class="stage-node active">
+              <div class="stage-name">Lakehouse S3</div>
+              <div class="stage-tech">Bronze / Silver / Gold</div>
+              <div class="stage-status-indicator" id="flow-s3-status">● MOUNTED</div>
+            </div>
+
+            <div class="stage-connector"></div>
+
+            <div class="stage-node active">
+              <div class="stage-name">Operational Sinks</div>
+              <div class="stage-tech">PostgreSQL & Neo4j</div>
+              <div class="stage-status-indicator" id="flow-sinks-status">● SYNCHRONIZED</div>
+            </div>
+
+            <div class="stage-connector"></div>
+
+            <div class="stage-node active">
+              <div class="stage-name">FastAPI Scoring</div>
+              <div class="stage-tech">Sub-50ms Risk Engine</div>
+              <div class="stage-status-indicator" id="flow-api-status">● HEALTHY</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Component Telemetry Cards -->
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">Infrastructure Components & Topics Telemetry</span>
+          </div>
+          <div class="panel-body no-padding">
+            <div class="table-responsive" id="pipelines-table-container">
+              <div class="loading-box"><div class="spinner"></div><span>Querying pipeline status...</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==============================================
+           PAGE 8: SYSTEM HEALTH
+           ============================================== -->
+      <section class="page" id="page-system-health">
+        <div class="page-head">
+          <div>
+            <h1 class="page-heading">System Availability & Health</h1>
+            <p class="page-subheading">Real-time status, health checks, ports, and telemetry metrics across all cluster services</p>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">Service Fleet Status</span>
+            <span class="panel-meta">Evaluated via Docker & HTTP healthchecks</span>
+          </div>
+          <div class="panel-body no-padding">
+            <div class="table-responsive" id="health-table-container">
+              <div class="loading-box"><div class="spinner"></div><span>Checking cluster services...</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- Slide-Over Investigation Modal (for Ledger row clicks) -->
+<div class="modal-backdrop" id="tx-modal-backdrop" onclick="closeModalOnBackdrop(event)">
+  <div class="modal-window">
+    <div class="dossier-header">
+      <div class="dossier-title-area">
+        <span class="dossier-tag">Forensic Investigation Dossier</span>
+        <span class="dossier-tx-id" id="modal-tx-id">—</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div id="modal-decision-badge"></div>
+        <button class="modal-close-btn" onclick="closeTxModal()">✕</button>
       </div>
     </div>
-
-    <!-- Page: Risk Signals -->
-    <div class="page" id="page-risk-signals">
-      <div class="panel">
-        <div class="panel-header">
-          <span class="panel-title">Active Risk Rules</span>
-          <span class="panel-meta" id="rules-count">—</span>
-        </div>
-        <div class="panel-body" id="risk-rules-container">
-          <div class="loading-placeholder">Loading rules...</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Page: Data Quality -->
-    <div class="page" id="page-data-quality">
-      <div class="stats-grid" id="dq-stats-grid">
-        <div class="stat-card loading"></div>
-        <div class="stat-card loading"></div>
-        <div class="stat-card loading"></div>
-        <div class="stat-card loading"></div>
-      </div>
-      <div class="panel" style="margin-top:20px;">
-        <div class="panel-header">
-          <span class="panel-title">Check Results</span>
-          <span class="panel-meta" id="dq-dataset-label">—</span>
-        </div>
-        <div class="panel-body" id="dq-checks-container">
-          <div class="loading-placeholder">Running data quality checks...</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Page: Pipelines -->
-    <div class="page" id="page-pipelines">
-      <div class="panel">
-        <div class="panel-header">
-          <span class="panel-title">Pipeline & Storage Status</span>
-          <span class="panel-badge" id="pipeline-checked-at">—</span>
-        </div>
-        <div class="panel-body" id="pipelines-container">
-          <div class="loading-placeholder">Checking components...</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Page: System Health -->
-    <div class="page" id="page-system-health">
-      <div class="health-grid" id="health-grid">
-        <div class="loading-placeholder">Checking services...</div>
-      </div>
-    </div>
-
-  </main>
-
-  <!-- Transaction Detail Modal -->
-  <div class="modal-overlay" id="tx-modal" onclick="closeTxModal(event)">
-    <div class="modal" id="tx-modal-content">
-      <button class="modal-close" onclick="closeTxModal()">✕</button>
-      <div id="tx-modal-body">Loading...</div>
+    <div style="overflow-y:auto; flex:1; max-height:calc(90vh - 70px);" id="modal-dossier-body">
+      <div class="loading-box"><div class="spinner"></div><span>Loading investigation details...</span></div>
     </div>
   </div>
+</div>
 
-  <script src="app.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
