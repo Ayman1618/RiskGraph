@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock
+
 import pytest
+
 from src.graph.graph_analytics import GraphFraudAnalytics
 
 
@@ -27,7 +29,7 @@ def test_graph_analytics_parsed_features():
         "shared_ip_count": 6,
         "shared_card_count": 1,
         "min_hop_to_fraud": 1,
-        "connected_fraud_node_ids": ["usr_fraud_ring_leader"]
+        "connected_fraud_node_ids": ["usr_fraud_ring_leader"],
     }
     mock_result = MagicMock()
     mock_result.single.return_value = mock_record

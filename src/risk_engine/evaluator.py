@@ -155,7 +155,9 @@ class RiskEvaluator:
                     actual_value=float(graph_feats.shared_device_count),
                 )
             )
-            reasons.append(f"Synthetic identity ring: Device shared across {graph_feats.shared_device_count} users")
+            reasons.append(
+                f"Synthetic identity ring: Device shared across {graph_feats.shared_device_count} users"
+            )
 
         if graph_feats.shared_ip_count >= DEFAULT_RULES["RULE_IP_SUBNET_RISK"].threshold:
             r = DEFAULT_RULES["RULE_IP_SUBNET_RISK"]
@@ -185,7 +187,9 @@ class RiskEvaluator:
                     actual_value=float(graph_feats.hop_distance_to_fraud),
                 )
             )
-            reasons.append(f"Immediate proximity (1 hop) to confirmed fraud node {graph_feats.connected_fraud_node_ids}")
+            reasons.append(
+                f"Immediate proximity (1 hop) to confirmed fraud node {graph_feats.connected_fraud_node_ids}"
+            )
 
         # Calculate Total Weighted Score (Capped at 100.0)
         total_weight = sum(rule.weight for rule in triggered_rules)
@@ -194,14 +198,23 @@ class RiskEvaluator:
         # Decision Logic
         if (
             is_blacklisted
-            or any(r.rule_id in ["RULE_CRITICAL_AMOUNT", "RULE_GRAPH_MULE_DISTANCE"] for r in triggered_rules)
+            or any(
+                r.rule_id in ["RULE_CRITICAL_AMOUNT", "RULE_GRAPH_MULE_DISTANCE"]
+                for r in triggered_rules
+            )
             or (graph_feats.shared_device_count >= 3 and graph_feats.is_identity_ring_member)
             or risk_score >= 80.0
         ):
             decision = RiskDecision.BLOCK
-        elif (
-            risk_score >= 25.0
-            or any(r.rule_id in ["RULE_HIGH_AMOUNT", "RULE_TX_VELOCITY_5M", "RULE_EMULATOR_DEVICE", "RULE_IP_SUBNET_RISK"] for r in triggered_rules)
+        elif risk_score >= 25.0 or any(
+            r.rule_id
+            in [
+                "RULE_HIGH_AMOUNT",
+                "RULE_TX_VELOCITY_5M",
+                "RULE_EMULATOR_DEVICE",
+                "RULE_IP_SUBNET_RISK",
+            ]
+            for r in triggered_rules
         ):
             decision = RiskDecision.REVIEW
         else:

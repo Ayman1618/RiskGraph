@@ -5,18 +5,16 @@ from typing import Optional
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import (
     col,
+    count,
+    countDistinct,
     current_timestamp,
     date_format,
+    expr,
     from_json,
-    to_json,
     struct,
-    when,
-    window,
-    count,
-    sum as spark_sum,
-    countDistinct,
-    expr
 )
+from pyspark.sql.functions import sum as spark_sum
+from pyspark.sql.functions import to_json, when, window
 
 from src.common.config import settings
 from src.common.logger import get_logger
@@ -53,7 +51,7 @@ def build_spark_session(app_name: str = "RiskGraph-Structured-Streaming") -> Spa
         "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1",
         "org.postgresql:postgresql:42.7.3",
         "org.apache.hadoop:hadoop-aws:3.3.4",
-        "com.amazonaws:aws-java-sdk-bundle:1.12.262"
+        "com.amazonaws:aws-java-sdk-bundle:1.12.262",
     ]
     builder = builder.config("spark.jars.packages", ",".join(packages))
 
@@ -75,7 +73,7 @@ class SparkStreamingPipeline:
         self.db_properties = {
             "user": settings.POSTGRES_USER,
             "password": settings.POSTGRES_PASSWORD,
-            "driver": "org.postgresql.Driver"
+            "driver": "org.postgresql.Driver",
         }
 
     def process_micro_batch(self, batch_df, batch_id: int):
@@ -110,7 +108,7 @@ class SparkStreamingPipeline:
                 expr("'[]'::jsonb").alias("triggered_rules"),
                 expr("'{}'::jsonb").alias("metadata"),
                 col("timestamp"),
-                current_timestamp().alias("created_at")
+                current_timestamp().alias("created_at"),
             )
 
             # Insert to PostgreSQL
@@ -118,9 +116,11 @@ class SparkStreamingPipeline:
                 url=self.jdbc_url,
                 table="transactions",
                 mode="append",
-                properties=self.db_properties
+                properties=self.db_properties,
             )
-            logger.info(f"Micro-batch {batch_id} successfully persisted to PostgreSQL transactions table.")
+            logger.info(
+                f"Micro-batch {batch_id} successfully persisted to PostgreSQL transactions table."
+            )
 
         except Exception as e:
             logger.error(f"Error persisting micro-batch {batch_id} to PostgreSQL: {e}")
@@ -129,11 +129,12 @@ class SparkStreamingPipeline:
         """
         Starts the PySpark Structured Streaming query.
         """
-        logger.info(f"Subscribing to Kafka topic: {settings.KAFKA_RAW_TRANSACTIONS_TOPIC} at {settings.KAFKA_BOOTSTRAP_SERVERS}")
+        logger.info(
+            f"Subscribing to Kafka topic: {settings.KAFKA_RAW_TRANSACTIONS_TOPIC} at {settings.KAFKA_BOOTSTRAP_SERVERS}"
+        )
 
         kafka_df = (
-            self.spark.readStream
-            .format("kafka")
+            self.spark.readStream.format("kafka")
             .option("kafka.bootstrap.servers", settings.KAFKA_BOOTSTRAP_SERVERS)
             .option("subscribe", settings.KAFKA_RAW_TRANSACTIONS_TOPIC)
             .option("startingOffsets", "latest")
@@ -152,7 +153,9 @@ class SparkStreamingPipeline:
             .withWatermark("timestamp", "10 minutes")
         )
 
-        bronze_s3_path = f"s3a://{settings.S3_BUCKET_NAME}/{settings.S3_BRONZE_PREFIX}/transactions/"
+        bronze_s3_path = (
+            f"s3a://{settings.S3_BUCKET_NAME}/{settings.S3_BRONZE_PREFIX}/transactions/"
+        )
         local_bronze_fallback = "/tmp/riskgraph/lakehouse/bronze/transactions/"
 
         lake_sink_path = bronze_s3_path if settings.S3_ENDPOINT_URL else local_bronze_fallback
@@ -161,8 +164,7 @@ class SparkStreamingPipeline:
 
         # Stream Query 1: Bronze Data Lake Writer (Parquet partitioned by year/month/day)
         bronze_query = (
-            parsed_df.writeStream
-            .format("parquet")
+            parsed_df.writeStream.format("parquet")
             .partitionBy("year", "month", "day")
             .option("path", lake_sink_path)
             .option("checkpointLocation", f"{checkpoint_dir}/bronze")
@@ -172,8 +174,7 @@ class SparkStreamingPipeline:
 
         # Stream Query 2: PostgreSQL ODS Writer via foreachBatch
         ods_query = (
-            parsed_df.writeStream
-            .foreachBatch(self.process_micro_batch)
+            parsed_df.writeStream.foreachBatch(self.process_micro_batch)
             .option("checkpointLocation", f"{checkpoint_dir}/ods")
             .outputMode("append")
             .start()

@@ -1,5 +1,6 @@
 import pandas as pd
 import pytest
+
 from src.data_quality.dq_rules import (
     check_not_null,
     check_positive_amount,
@@ -15,7 +16,7 @@ def test_dq_checks_pass():
         "user_id": ["u_1", "u_2", "u_3"],
         "amount": [10.50, 250.0, 99.99],
         "currency": ["USD", "USD", "EUR"],
-        "ip_address": ["192.168.1.1", "10.0.0.1", "172.16.0.1"]
+        "ip_address": ["192.168.1.1", "10.0.0.1", "172.16.0.1"],
     }
     df = pd.DataFrame(data)
 
@@ -33,7 +34,7 @@ def test_dq_checks_detect_anomalies():
         "user_id": ["u_1", "u_2", "u_3"],
         "amount": [10.50, -50.0, 99.99],  # Negative amount
         "currency": ["USD", "INVALID_CURRENCY", "EUR"],
-        "ip_address": ["192.168.1.1", "NOT_AN_IP", "172.16.0.1"]
+        "ip_address": ["192.168.1.1", "NOT_AN_IP", "172.16.0.1"],
     }
     df = pd.DataFrame(bad_data)
 

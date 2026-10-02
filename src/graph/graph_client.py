@@ -1,5 +1,6 @@
 from typing import Any, Dict, List, Optional
-from neo4j import GraphDatabase, Driver
+
+from neo4j import Driver, GraphDatabase
 
 from src.common.config import settings
 from src.common.logger import get_logger
@@ -13,10 +14,7 @@ class Neo4jClient:
     """
 
     def __init__(
-        self,
-        uri: Optional[str] = None,
-        user: Optional[str] = None,
-        password: Optional[str] = None
+        self, uri: Optional[str] = None, user: Optional[str] = None, password: Optional[str] = None
     ):
         self.uri = uri or settings.NEO4J_URI
         self.user = user or settings.NEO4J_USER
@@ -30,7 +28,7 @@ class Neo4jClient:
                 self.uri,
                 auth=(self.user, self.password),
                 max_connection_lifetime=3600,
-                max_connection_pool_size=50
+                max_connection_pool_size=50,
             )
         return self._driver
 
@@ -52,7 +50,7 @@ class Neo4jClient:
             "CREATE CONSTRAINT card_unique IF NOT EXISTS FOR (c:Card) REQUIRE c.id IS UNIQUE",
             "CREATE CONSTRAINT merchant_unique IF NOT EXISTS FOR (m:Merchant) REQUIRE m.id IS UNIQUE",
             "CREATE INDEX user_fraud_status_idx IF NOT EXISTS FOR (u:User) ON (u.is_fraudulent)",
-            "CREATE INDEX device_fingerprint_idx IF NOT EXISTS FOR (d:Device) ON (d.fingerprint)"
+            "CREATE INDEX device_fingerprint_idx IF NOT EXISTS FOR (d:Device) ON (d.fingerprint)",
         ]
 
         with driver.session() as session:
@@ -63,7 +61,9 @@ class Neo4jClient:
                 except Exception as e:
                     logger.warning(f"Neo4j constraint initialization warning: {e}")
 
-    def execute_query(self, query: str, parameters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+    def execute_query(
+        self, query: str, parameters: Optional[Dict[str, Any]] = None
+    ) -> List[Dict[str, Any]]:
         """
         Executes a Cypher query and returns records as list of dictionaries.
         """

@@ -40,7 +40,7 @@ def test_evaluate_transaction_endpoint():
         "user_id": "usr_api_test_01",
         "amount": 125.00,
         "ip_address": "198.51.100.99",
-        "device_id": "dev_api_01"
+        "device_id": "dev_api_01",
     }
     response = client.post("/api/v1/transactions/evaluate", json=payload)
     assert response.status_code == 200

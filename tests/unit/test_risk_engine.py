@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 
 from src.common.models import GraphFeatures, RiskDecision, RiskEvaluationRequest
 from src.risk_engine.evaluator import RiskEvaluator
@@ -17,25 +18,18 @@ def mock_velocity_service():
 def mock_graph_analytics():
     mock = MagicMock()
     mock.get_user_graph_features.return_value = GraphFeatures(
-        user_id="usr_test_123",
-        shared_device_count=0,
-        shared_ip_count=0,
-        shared_card_count=0
+        user_id="usr_test_123", shared_device_count=0, shared_ip_count=0, shared_card_count=0
     )
     return mock
 
 
 def test_standard_transaction_approved(mock_velocity_service, mock_graph_analytics):
     evaluator = RiskEvaluator(
-        velocity_service=mock_velocity_service,
-        graph_analytics=mock_graph_analytics
+        velocity_service=mock_velocity_service, graph_analytics=mock_graph_analytics
     )
 
     req = RiskEvaluationRequest(
-        user_id="usr_test_123",
-        amount=45.50,
-        ip_address="198.51.100.1",
-        device_id="dev_legit_001"
+        user_id="usr_test_123", amount=45.50, ip_address="198.51.100.1", device_id="dev_legit_001"
     )
 
     resp = evaluator.evaluate(req)
@@ -46,15 +40,10 @@ def test_standard_transaction_approved(mock_velocity_service, mock_graph_analyti
 
 def test_critical_amount_blocked(mock_velocity_service, mock_graph_analytics):
     evaluator = RiskEvaluator(
-        velocity_service=mock_velocity_service,
-        graph_analytics=mock_graph_analytics
+        velocity_service=mock_velocity_service, graph_analytics=mock_graph_analytics
     )
 
-    req = RiskEvaluationRequest(
-        user_id="usr_test_123",
-        amount=25000.0,
-        ip_address="198.51.100.1"
-    )
+    req = RiskEvaluationRequest(user_id="usr_test_123", amount=25000.0, ip_address="198.51.100.1")
 
     resp = evaluator.evaluate(req)
     assert resp.decision == RiskDecision.BLOCK
@@ -65,14 +54,11 @@ def test_high_velocity_review(mock_velocity_service, mock_graph_analytics):
     mock_velocity_service.record_and_get_velocity.return_value = 6  # Exceeds threshold of 4
 
     evaluator = RiskEvaluator(
-        velocity_service=mock_velocity_service,
-        graph_analytics=mock_graph_analytics
+        velocity_service=mock_velocity_service, graph_analytics=mock_graph_analytics
     )
 
     req = RiskEvaluationRequest(
-        user_id="usr_velocity_spammer",
-        amount=100.0,
-        ip_address="198.51.100.1"
+        user_id="usr_velocity_spammer", amount=100.0, ip_address="198.51.100.1"
     )
 
     resp = evaluator.evaluate(req)
@@ -82,21 +68,18 @@ def test_high_velocity_review(mock_velocity_service, mock_graph_analytics):
 
 def test_identity_ring_blocked(mock_velocity_service, mock_graph_analytics):
     mock_graph_analytics.get_user_graph_features.return_value = GraphFeatures(
-        user_id="usr_ring_member",
-        shared_device_count=4,
-        is_identity_ring_member=True
+        user_id="usr_ring_member", shared_device_count=4, is_identity_ring_member=True
     )
 
     evaluator = RiskEvaluator(
-        velocity_service=mock_velocity_service,
-        graph_analytics=mock_graph_analytics
+        velocity_service=mock_velocity_service, graph_analytics=mock_graph_analytics
     )
 
     req = RiskEvaluationRequest(
         user_id="usr_ring_member",
         amount=500.0,
         ip_address="192.0.2.10",
-        device_id="dev_shared_ring_0"
+        device_id="dev_shared_ring_0",
     )
 
     resp = evaluator.evaluate(req)
@@ -106,14 +89,13 @@ def test_identity_ring_blocked(mock_velocity_service, mock_graph_analytics):
 
 def test_blacklist_match_blocked(mock_velocity_service, mock_graph_analytics):
     evaluator = RiskEvaluator(
-        velocity_service=mock_velocity_service,
-        graph_analytics=mock_graph_analytics
+        velocity_service=mock_velocity_service, graph_analytics=mock_graph_analytics
     )
 
     req = RiskEvaluationRequest(
         user_id="usr_known_attacker",
         amount=10.0,
-        ip_address="198.51.100.42"  # Known blacklisted IP
+        ip_address="198.51.100.42",  # Known blacklisted IP
     )
 
     resp = evaluator.evaluate(req)

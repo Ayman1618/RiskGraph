@@ -2,7 +2,9 @@
 Airflow DAG: Identity Graph Sync & Graph Risk Intelligence
 Orchestrates loading Gold graph entities into Neo4j and syncing fraud rings.
 """
+
 from datetime import datetime, timedelta
+
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
@@ -23,22 +25,27 @@ dag = DAG(
     schedule_interval="@hourly",
     catchup=False,
     max_active_runs=1,
-    tags=["riskgraph", "neo4j", "identity-graph", "fraud-detection"]
+    tags=["riskgraph", "neo4j", "identity-graph", "fraud-detection"],
 )
 
 
 def init_neo4j_constraints_task(**context):
     from src.graph.graph_client import Neo4jClient
+
     client = Neo4jClient()
     client.init_schema()
     client.close()
 
 
 def load_gold_to_neo4j_task(**context):
-    from src.graph.graph_loader import Neo4jGraphLoader
     from src.common.config import settings
+    from src.graph.graph_loader import Neo4jGraphLoader
 
-    base = f"s3a://{settings.S3_BUCKET_NAME}" if settings.S3_ENDPOINT_URL else "/tmp/riskgraph/lakehouse"
+    base = (
+        f"s3a://{settings.S3_BUCKET_NAME}"
+        if settings.S3_ENDPOINT_URL
+        else "/tmp/riskgraph/lakehouse"
+    )
     nodes_path = f"{base}/{settings.S3_GOLD_PREFIX}/graph_nodes"
     edges_path = f"{base}/{settings.S3_GOLD_PREFIX}/graph_edges"
 
@@ -52,6 +59,7 @@ def load_gold_to_neo4j_task(**context):
 
 def tag_fraud_rings_task(**context):
     from src.graph.graph_analytics import GraphFraudAnalytics
+
     analytics = GraphFraudAnalytics()
     rings = analytics.find_fraud_rings(min_ring_size=3)
     print(f"Discovered {len(rings)} active fraud rings in Neo4j Identity Graph.")
@@ -59,18 +67,15 @@ def tag_fraud_rings_task(**context):
 
 with dag:
     t1_schema = PythonOperator(
-        task_id="init_neo4j_schema_constraints",
-        python_callable=init_neo4j_constraints_task
+        task_id="init_neo4j_schema_constraints", python_callable=init_neo4j_constraints_task
     )
 
     t2_load = PythonOperator(
-        task_id="sync_gold_graph_to_neo4j",
-        python_callable=load_gold_to_neo4j_task
+        task_id="sync_gold_graph_to_neo4j", python_callable=load_gold_to_neo4j_task
     )
 
     t3_rings = PythonOperator(
-        task_id="detect_and_tag_fraud_rings",
-        python_callable=tag_fraud_rings_task
+        task_id="detect_and_tag_fraud_rings", python_callable=tag_fraud_rings_task
     )
 
     t1_schema >> t2_load >> t3_rings

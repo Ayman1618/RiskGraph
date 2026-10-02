@@ -1,5 +1,6 @@
 import time
 from typing import Optional
+
 import redis
 
 from src.common.config import settings
@@ -13,7 +14,9 @@ class VelocityService:
     Sub-millisecond sliding window velocity tracking using Redis Sorted Sets (ZADD / ZREMRANGEBYSCORE).
     """
 
-    def __init__(self, host: Optional[str] = None, port: Optional[int] = None, password: Optional[str] = None):
+    def __init__(
+        self, host: Optional[str] = None, port: Optional[int] = None, password: Optional[str] = None
+    ):
         self.host = host or settings.REDIS_HOST
         self.port = port or settings.REDIS_PORT
         self.password = password or settings.REDIS_PASSWORD
@@ -26,15 +29,12 @@ class VelocityService:
                 port=self.port,
                 password=self.password,
                 decode_responses=True,
-                socket_connect_timeout=2
+                socket_connect_timeout=2,
             )
         return self._client
 
     def record_and_get_velocity(
-        self,
-        entity_key: str,
-        window_seconds: int = 300,
-        amount: float = 0.0
+        self, entity_key: str, window_seconds: int = 300, amount: float = 0.0
     ) -> int:
         """
         Records a transaction timestamp into Redis sorted set and returns count within window_seconds.

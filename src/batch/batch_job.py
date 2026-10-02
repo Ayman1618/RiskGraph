@@ -27,7 +27,11 @@ def run_daily_batch_pipeline(
     spark = build_spark_session(app_name="RiskGraph-Daily-Batch-ETL")
 
     # Resolve S3 / Local lakehouse paths
-    base_s3 = f"s3a://{settings.S3_BUCKET_NAME}" if settings.S3_ENDPOINT_URL else "/tmp/riskgraph/lakehouse"
+    base_s3 = (
+        f"s3a://{settings.S3_BUCKET_NAME}"
+        if settings.S3_ENDPOINT_URL
+        else "/tmp/riskgraph/lakehouse"
+    )
     b_path = bronze_path or f"{base_s3}/{settings.S3_BRONZE_PREFIX}/transactions"
     s_path = silver_path or f"{base_s3}/{settings.S3_SILVER_PREFIX}/transactions"
     g_path = gold_path or f"{base_s3}/{settings.S3_GOLD_PREFIX}"
@@ -43,7 +47,9 @@ def run_daily_batch_pipeline(
         s2g = SilverToGoldPipeline(spark)
         outputs = s2g.run(silver_input_path=s_path, gold_base_path=g_path)
 
-        logger.info(f"Batch Lakehouse ETL completed successfully for {date_str}. Generated artifacts: {outputs}")
+        logger.info(
+            f"Batch Lakehouse ETL completed successfully for {date_str}. Generated artifacts: {outputs}"
+        )
         return outputs
 
     except Exception as e:

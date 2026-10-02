@@ -1,8 +1,9 @@
 import json
 from typing import Optional
+
 import psycopg2
-from psycopg2.extras import RealDictCursor
 import redis
+from psycopg2.extras import RealDictCursor
 
 from src.common.config import settings
 from src.common.logger import get_logger
@@ -45,8 +46,7 @@ def get_risk_evaluator() -> RiskEvaluator:
     global _risk_evaluator
     if _risk_evaluator is None:
         _risk_evaluator = RiskEvaluator(
-            velocity_service=get_velocity_service(),
-            graph_analytics=get_graph_analytics()
+            velocity_service=get_velocity_service(), graph_analytics=get_graph_analytics()
         )
     return _risk_evaluator
 
@@ -61,7 +61,7 @@ def get_db_connection():
         dbname=settings.POSTGRES_DB,
         user=settings.POSTGRES_USER,
         password=settings.POSTGRES_PASSWORD,
-        cursor_factory=RealDictCursor
+        cursor_factory=RealDictCursor,
     )
     try:
         yield conn

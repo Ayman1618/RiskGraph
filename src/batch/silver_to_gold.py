@@ -9,11 +9,11 @@ from pyspark.sql.functions import (
     countDistinct,
     current_timestamp,
     lit,
-    max as spark_max,
-    min as spark_min,
-    sum as spark_sum,
-    when
 )
+from pyspark.sql.functions import max as spark_max
+from pyspark.sql.functions import min as spark_min
+from pyspark.sql.functions import sum as spark_sum
+from pyspark.sql.functions import when
 
 from src.common.config import settings
 from src.common.logger import get_logger
@@ -31,7 +31,9 @@ class SilverToGoldPipeline:
         self.spark = spark
 
     def run(self, silver_input_path: str, gold_base_path: str) -> Dict[str, str]:
-        logger.info(f"Starting Silver -> Gold transformation from {silver_input_path} into {gold_base_path}")
+        logger.info(
+            f"Starting Silver -> Gold transformation from {silver_input_path} into {gold_base_path}"
+        )
 
         silver_df = self.spark.read.parquet(silver_input_path)
 
@@ -47,7 +49,7 @@ class SilverToGoldPipeline:
                 countDistinct("ip_address").alias("distinct_ips_count"),
                 countDistinct("card_token").alias("distinct_cards_count"),
                 countDistinct("merchant_id").alias("distinct_merchants_count"),
-                spark_sum(when(col("is_high_value"), 1).otherwise(0)).alias("high_value_tx_count")
+                spark_sum(when(col("is_high_value"), 1).otherwise(0)).alias("high_value_tx_count"),
             )
             .withColumn("gold_generated_at", current_timestamp())
         )
@@ -64,9 +66,12 @@ class SilverToGoldPipeline:
                 countDistinct("user_id").alias("shared_users_count"),
                 count("transaction_id").alias("total_tx_count"),
                 spark_sum("amount").alias("total_volume"),
-                spark_max("timestamp").alias("last_seen_timestamp")
+                spark_max("timestamp").alias("last_seen_timestamp"),
             )
-            .withColumn("is_shared_device_ring", when(col("shared_users_count") >= 3, lit(True)).otherwise(lit(False)))
+            .withColumn(
+                "is_shared_device_ring",
+                when(col("shared_users_count") >= 3, lit(True)).otherwise(lit(False)),
+            )
             .withColumn("gold_generated_at", current_timestamp())
         )
 
@@ -75,13 +80,43 @@ class SilverToGoldPipeline:
         logger.info(f"Wrote device risk features to {device_risk_path}")
 
         # 3. Gold Graph Extract: Nodes
-        user_nodes = silver_df.select("user_id").distinct().withColumnRenamed("user_id", "id").withColumn("type", lit("User"))
-        device_nodes = silver_df.filter(col("device_id") != "UNKNOWN_DEVICE").select("device_id").distinct().withColumnRenamed("device_id", "id").withColumn("type", lit("Device"))
-        ip_nodes = silver_df.select("ip_address").distinct().withColumnRenamed("ip_address", "id").withColumn("type", lit("IP"))
-        card_nodes = silver_df.filter(col("card_token") != "UNKNOWN_CARD").select("card_token").distinct().withColumnRenamed("card_token", "id").withColumn("type", lit("Card"))
-        merchant_nodes = silver_df.filter(col("merchant_id") != "DIRECT_TRANSFER").select("merchant_id").distinct().withColumnRenamed("merchant_id", "id").withColumn("type", lit("Merchant"))
+        user_nodes = (
+            silver_df.select("user_id")
+            .distinct()
+            .withColumnRenamed("user_id", "id")
+            .withColumn("type", lit("User"))
+        )
+        device_nodes = (
+            silver_df.filter(col("device_id") != "UNKNOWN_DEVICE")
+            .select("device_id")
+            .distinct()
+            .withColumnRenamed("device_id", "id")
+            .withColumn("type", lit("Device"))
+        )
+        ip_nodes = (
+            silver_df.select("ip_address")
+            .distinct()
+            .withColumnRenamed("ip_address", "id")
+            .withColumn("type", lit("IP"))
+        )
+        card_nodes = (
+            silver_df.filter(col("card_token") != "UNKNOWN_CARD")
+            .select("card_token")
+            .distinct()
+            .withColumnRenamed("card_token", "id")
+            .withColumn("type", lit("Card"))
+        )
+        merchant_nodes = (
+            silver_df.filter(col("merchant_id") != "DIRECT_TRANSFER")
+            .select("merchant_id")
+            .distinct()
+            .withColumnRenamed("merchant_id", "id")
+            .withColumn("type", lit("Merchant"))
+        )
 
-        all_nodes_df = user_nodes.union(device_nodes).union(ip_nodes).union(card_nodes).union(merchant_nodes)
+        all_nodes_df = (
+            user_nodes.union(device_nodes).union(ip_nodes).union(card_nodes).union(merchant_nodes)
+        )
         nodes_path = f"{gold_base_path}/graph_nodes"
         all_nodes_df.write.mode("overwrite").parquet(nodes_path)
 
@@ -92,20 +127,17 @@ class SilverToGoldPipeline:
                 col("user_id").alias("source"),
                 col("device_id").alias("target"),
                 lit("USES_DEVICE").alias("relationship"),
-                col("timestamp")
+                col("timestamp"),
             )
             .distinct()
         )
 
-        edges_user_ip = (
-            silver_df.select(
-                col("user_id").alias("source"),
-                col("ip_address").alias("target"),
-                lit("ORIGINATED_FROM_IP").alias("relationship"),
-                col("timestamp")
-            )
-            .distinct()
-        )
+        edges_user_ip = silver_df.select(
+            col("user_id").alias("source"),
+            col("ip_address").alias("target"),
+            lit("ORIGINATED_FROM_IP").alias("relationship"),
+            col("timestamp"),
+        ).distinct()
 
         edges_user_card = (
             silver_df.filter(col("card_token") != "UNKNOWN_CARD")
@@ -113,7 +145,7 @@ class SilverToGoldPipeline:
                 col("user_id").alias("source"),
                 col("card_token").alias("target"),
                 lit("PAID_WITH").alias("relationship"),
-                col("timestamp")
+                col("timestamp"),
             )
             .distinct()
         )
@@ -124,12 +156,14 @@ class SilverToGoldPipeline:
                 col("user_id").alias("source"),
                 col("merchant_id").alias("target"),
                 lit("TRANSACTED_WITH").alias("relationship"),
-                col("timestamp")
+                col("timestamp"),
             )
             .distinct()
         )
 
-        all_edges_df = edges_user_device.union(edges_user_ip).union(edges_user_card).union(edges_user_merchant)
+        all_edges_df = (
+            edges_user_device.union(edges_user_ip).union(edges_user_card).union(edges_user_merchant)
+        )
         edges_path = f"{gold_base_path}/graph_edges"
         all_edges_df.write.mode("overwrite").parquet(edges_path)
         logger.info(f"Wrote graph nodes ({nodes_path}) and edges ({edges_path})")
@@ -138,5 +172,5 @@ class SilverToGoldPipeline:
             "user_features": user_features_path,
             "device_risk": device_risk_path,
             "graph_nodes": nodes_path,
-            "graph_edges": edges_path
+            "graph_edges": edges_path,
         }

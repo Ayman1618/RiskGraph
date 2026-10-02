@@ -2,6 +2,7 @@ import json
 import os
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+
 import pandas as pd
 from pydantic import BaseModel, Field
 
@@ -42,7 +43,9 @@ class DataQualityRunner:
         self.checks = checks or build_standard_transaction_dq_suite()
 
     def run_suite(self, df: pd.DataFrame, dataset_name: str = "transactions") -> DataQualityReport:
-        logger.info(f"Running {len(self.checks)} Data Quality checks on dataset '{dataset_name}' ({len(df)} rows)...")
+        logger.info(
+            f"Running {len(self.checks)} Data Quality checks on dataset '{dataset_name}' ({len(df)} rows)..."
+        )
 
         results: List[DQCheckResult] = []
         passed_count = 0
@@ -60,7 +63,7 @@ class DataQualityRunner:
                     description=check.description,
                     passed=passed,
                     failed_count=res.get("failed_count", 0),
-                    pass_rate=res.get("pass_rate", 100.0 if passed else 0.0)
+                    pass_rate=res.get("pass_rate", 100.0 if passed else 0.0),
                 )
             )
 
@@ -76,7 +79,7 @@ class DataQualityRunner:
             failed_checks=failed_count,
             overall_pass_rate=overall_rate,
             is_dataset_healthy=is_healthy,
-            results=results
+            results=results,
         )
 
         logger.info(
@@ -91,7 +94,7 @@ class DataQualityRunner:
         """
         timestamp_str = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         filename = f"dq_report_{report.dataset_name}_{timestamp_str}.json"
-        
+
         target_dir = output_dir or "/tmp/riskgraph/lakehouse/reports"
         os.makedirs(target_dir, exist_ok=True)
         filepath = os.path.join(target_dir, filename)

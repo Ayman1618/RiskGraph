@@ -3,16 +3,16 @@ from typing import Optional
 
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.functions import (
+    coalesce,
     col,
     current_timestamp,
     date_format,
+    lit,
     lower,
     row_number,
     sha2,
     trim,
     when,
-    coalesce,
-    lit
 )
 from pyspark.sql.window import Window
 
@@ -41,8 +41,7 @@ class BronzeToSilverPipeline:
 
         # 2. Cleansing and Standardization
         cleansed_df = (
-            raw_df
-            .filter(col("transaction_id").isNotNull() & col("user_id").isNotNull())
+            raw_df.filter(col("transaction_id").isNotNull() & col("user_id").isNotNull())
             .filter(col("amount") > 0)
             .withColumn("amount", col("amount").cast("double"))
             .withColumn("currency", coalesce(upper(trim(col("currency"))), lit("USD")))
@@ -56,34 +55,31 @@ class BronzeToSilverPipeline:
         # 3. Deduplication (Keep latest transaction per transaction_id)
         window_spec = Window.partitionBy("transaction_id").orderBy(col("timestamp").desc())
         deduped_df = (
-            cleansed_df
-            .withColumn("row_num", row_number().over(window_spec))
+            cleansed_df.withColumn("row_num", row_number().over(window_spec))
             .filter(col("row_num") == 1)
             .drop("row_num")
         )
 
         # 4. Enrichment & Feature flags
         silver_df = (
-            deduped_df
-            .withColumn("ip_network_prefix", expr("substring_index(ip_address, '.', 3)"))
-            .withColumn("is_high_value", when(col("amount") >= 5000.0, lit(True)).otherwise(lit(False)))
+            deduped_df.withColumn("ip_network_prefix", expr("substring_index(ip_address, '.', 3)"))
+            .withColumn(
+                "is_high_value", when(col("amount") >= 5000.0, lit(True)).otherwise(lit(False))
+            )
             .withColumn("tx_date", date_format(col("timestamp"), "yyyy-MM-dd"))
             .withColumn("silver_processed_at", current_timestamp())
         )
 
         final_count = silver_df.count()
-        logger.info(f"Writing {final_count} deduplicated and enriched records to Silver layer at {output_path}...")
-
-        (
-            silver_df.write
-            .mode("overwrite")
-            .partitionBy("tx_date")
-            .parquet(output_path)
+        logger.info(
+            f"Writing {final_count} deduplicated and enriched records to Silver layer at {output_path}..."
         )
+
+        (silver_df.write.mode("overwrite").partitionBy("tx_date").parquet(output_path))
 
         logger.info("Bronze to Silver ETL completed successfully.")
         return silver_df
 
 
 # Helper for upper if needed
-from pyspark.sql.functions import upper, expr
+from pyspark.sql.functions import expr, upper

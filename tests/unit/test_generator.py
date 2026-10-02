@@ -1,6 +1,7 @@
 import pytest
-from src.generator.generator import SyntheticEventGenerator
+
 from src.common.models import TransactionStatus
+from src.generator.generator import SyntheticEventGenerator
 
 
 def test_generator_initialization():
@@ -30,7 +31,13 @@ def test_generate_fraud_ring_event():
 
     assert tx.amount > 0
     assert tx.metadata.get("is_synthetic_fraud") is True
-    assert tx.metadata.get("fraud_type_injected") in ["ring", "velocity", "ato", "blacklist", "amount"]
+    assert tx.metadata.get("fraud_type_injected") in [
+        "ring",
+        "velocity",
+        "ato",
+        "blacklist",
+        "amount",
+    ]
 
 
 def test_generate_stream_bounded():

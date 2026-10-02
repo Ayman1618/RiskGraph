@@ -1,15 +1,15 @@
 from src.common.config import settings
 from src.common.logger import get_logger
 from src.common.models import (
-    TransactionEvent,
-    IdentityEvent,
     DeviceSignal,
+    FraudAlert,
+    GraphFeatures,
+    IdentityEvent,
+    RiskDecision,
     RiskEvaluationRequest,
     RiskEvaluationResponse,
-    RiskDecision,
+    TransactionEvent,
     TriggeredRule,
-    GraphFeatures,
-    FraudAlert
 )
 
 __all__ = [

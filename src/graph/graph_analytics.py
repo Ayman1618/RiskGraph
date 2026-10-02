@@ -1,4 +1,5 @@
 from typing import Any, Dict, List, Optional
+
 from src.common.config import settings
 from src.common.logger import get_logger
 from src.common.models import GraphFeatures
@@ -68,7 +69,11 @@ class GraphFraudAnalytics:
                 hop_dist = record.get("hop_distance_to_fraud")
                 fraud_nodes = record.get("connected_fraud_node_ids", []) or []
 
-                is_ring = (shared_device >= 3) or (shared_card >= 2) or (shared_ip >= 5 and shared_device >= 1)
+                is_ring = (
+                    (shared_device >= 3)
+                    or (shared_card >= 2)
+                    or (shared_ip >= 5 and shared_device >= 1)
+                )
 
                 return GraphFeatures(
                     user_id=user_id,
@@ -77,7 +82,7 @@ class GraphFraudAnalytics:
                     shared_card_count=shared_card,
                     hop_distance_to_fraud=hop_dist,
                     is_identity_ring_member=is_ring,
-                    connected_fraud_node_ids=fraud_nodes
+                    connected_fraud_node_ids=fraud_nodes,
                 )
         except Exception as e:
             logger.warning(f"Error extracting graph features for user {user_id}: {e}")
@@ -142,7 +147,7 @@ class GraphFraudAnalytics:
                     return {
                         "user_id": user_id,
                         "nodes": [n for n in rec.get("nodes", []) if n and n.get("id")],
-                        "edges": [e for e in rec.get("edges", []) if e and e.get("source")]
+                        "edges": [e for e in rec.get("edges", []) if e and e.get("source")],
                     }
             except Exception as e:
                 logger.error(f"Error fetching subgraph for user {user_id}: {e}")

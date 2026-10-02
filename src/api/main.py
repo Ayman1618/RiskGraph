@@ -13,7 +13,7 @@ app = FastAPI(
     description="Real-Time Fraud & Identity Data Engineering and Decision Engine",
     version="1.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
 )
 
 # CORS middleware for developer UI/dashboard integrations
@@ -36,7 +36,7 @@ def root():
         "version": "1.0.0",
         "docs": "/docs",
         "health": "/health",
-        "metrics": "/metrics"
+        "metrics": "/metrics",
     }
 
 
@@ -48,24 +48,20 @@ def health_check():
     health_status = {
         "status": "healthy",
         "environment": settings.ENVIRONMENT,
-        "services": {
-            "api": "UP",
-            "postgres": "UNKNOWN",
-            "redis": "UNKNOWN",
-            "neo4j": "UNKNOWN"
-        }
+        "services": {"api": "UP", "postgres": "UNKNOWN", "redis": "UNKNOWN", "neo4j": "UNKNOWN"},
     }
 
     # Check PostgreSQL
     try:
         import psycopg2
+
         conn = psycopg2.connect(
             host=settings.POSTGRES_HOST,
             port=settings.POSTGRES_PORT,
             dbname=settings.POSTGRES_DB,
             user=settings.POSTGRES_USER,
             password=settings.POSTGRES_PASSWORD,
-            connect_timeout=2
+            connect_timeout=2,
         )
         conn.close()
         health_status["services"]["postgres"] = "UP"
@@ -75,11 +71,12 @@ def health_check():
     # Check Redis
     try:
         import redis
+
         r = redis.Redis(
             host=settings.REDIS_HOST,
             port=settings.REDIS_PORT,
             password=settings.REDIS_PASSWORD,
-            socket_connect_timeout=2
+            socket_connect_timeout=2,
         )
         r.ping()
         health_status["services"]["redis"] = "UP"
@@ -89,9 +86,9 @@ def health_check():
     # Check Neo4j
     try:
         from neo4j import GraphDatabase
+
         driver = GraphDatabase.driver(
-            settings.NEO4J_URI,
-            auth=(settings.NEO4J_USER, settings.NEO4J_PASSWORD)
+            settings.NEO4J_URI, auth=(settings.NEO4J_USER, settings.NEO4J_PASSWORD)
         )
         driver.verify_connectivity()
         driver.close()
@@ -112,4 +109,5 @@ def metrics():
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run("src.api.main:app", host="0.0.0.0", port=settings.APP_PORT, reload=True)
