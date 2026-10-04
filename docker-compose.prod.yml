@@ -2,13 +2,14 @@ version: '3.8'
 
 # ==============================================================================
 # RiskGraph Platform — Production Multi-Container Compose Configuration
-# Target: Oracle Cloud Always Free Ampere A1 (4 OCPU, 24 GB RAM, ARM64)
+# Target: Oracle Cloud Always Free Ampere A1 (2 OCPU, 12 GB RAM, ARM64)
 #
-# Security Architecture:
+# Resource Architecture:
+# - Strictly bounded JVM heaps (Kafka, Zookeeper, Neo4j, PySpark).
+# - Airflow scheduler concurrency bounded to avoid CPU thrashing on 2 OCPUs.
+# - Total memory hard cap across all 12 services is ~8.5 GB, safely leaving
+#   >3.4 GB of physical RAM + 4 GB NVMe swap for Linux OS and page buffers.
 # - ONLY Nginx ports 80/443 are exposed to host/public internet.
-# - All internal services (PostgreSQL, Neo4j, Redis, Kafka, Zookeeper,
-#   LocalStack, Spark, Airflow, Prometheus, Grafana, API) are isolated
-#   within the private bridge network 'riskgraph-prod-net'.
 # ==============================================================================
 
 services:
@@ -33,10 +34,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.50'
-          memory: 256M
+          cpus: '0.25'
+          memory: 128M
         reservations:
-          memory: 64M
+          memory: 32M
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost/nginx-health"]
       interval: 10s
@@ -89,10 +90,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 1024M
+          cpus: '0.75'
+          memory: 512M
         reservations:
-          memory: 256M
+          memory: 128M
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
       interval: 10s
@@ -118,10 +119,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.75'
-          memory: 1536M
+          cpus: '0.50'
+          memory: 512M
         reservations:
-          memory: 256M
+          memory: 128M
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-riskgraph_user} -d ${POSTGRES_DB:-riskgraph}"]
       interval: 5s
@@ -141,18 +142,18 @@ services:
       NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-riskgraph_graph_pass}
       NEO4J_PLUGINS: '["apoc"]'
       NEO4J_dbms_security_procedures_unrestricted: "apoc.*,gds.*"
-      NEO4J_server_memory_heap_initial__size: 512m
-      NEO4J_server_memory_heap_max__size: 1536m
-      NEO4J_server_memory_pagecache_size: 512m
+      NEO4J_server_memory_heap_initial__size: 384m
+      NEO4J_server_memory_heap_max__size: 1024m
+      NEO4J_server_memory_pagecache_size: 256m
     volumes:
       - prod_neo4j_data:/data
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 2560M
+          cpus: '0.75'
+          memory: 1536M
         reservations:
-          memory: 768M
+          memory: 512M
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
       interval: 10s
@@ -168,16 +169,16 @@ services:
     image: redis:7.2-alpine
     container_name: riskgraph-redis
     restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
     volumes:
       - prod_redis_data:/data
     deploy:
       resources:
         limits:
           cpus: '0.25'
-          memory: 384M
+          memory: 192M
         reservations:
-          memory: 64M
+          memory: 32M
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -196,7 +197,7 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
-      KAFKA_HEAP_OPTS: "-Xms256m -Xmx512m"
+      KAFKA_HEAP_OPTS: "-Xms128m -Xmx256m"
     volumes:
       - prod_zookeeper_data:/var/lib/zookeeper/data
       - prod_zookeeper_log:/var/lib/zookeeper/log
@@ -204,9 +205,9 @@ services:
       resources:
         limits:
           cpus: '0.25'
-          memory: 768M
+          memory: 384M
         reservations:
-          memory: 256M
+          memory: 128M
     healthcheck:
       test: ["CMD-SHELL", "echo srvr | nc localhost 2181 || exit 1"]
       interval: 10s
@@ -232,16 +233,16 @@ services:
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_HEAP_OPTS: "-Xms512m -Xmx1024m"
+      KAFKA_HEAP_OPTS: "-Xms384m -Xmx768m"
     volumes:
       - prod_kafka_data:/var/lib/kafka/data
     deploy:
       resources:
         limits:
-          cpus: '0.75'
-          memory: 1536M
+          cpus: '0.50'
+          memory: 1024M
         reservations:
-          memory: 512M
+          memory: 384M
     healthcheck:
       test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "kafka:29092"]
       interval: 10s
@@ -286,6 +287,7 @@ services:
     restart: unless-stopped
     environment:
       SERVICES: s3
+      EAGER_SERVICE_LOADING: "1"
       AWS_DEFAULT_REGION: us-east-1
     volumes:
       - ./deploy/localstack/init_s3.sh:/etc/localstack/init/ready.d/init_s3.sh:ro
@@ -293,8 +295,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
-          memory: 1024M
+          cpus: '0.50'
+          memory: 768M
         reservations:
           memory: 256M
     healthcheck:
@@ -337,14 +339,14 @@ services:
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
       AWS_REGION: us-east-1
       SPARK_MASTER: "local[2]"
-      SPARK_DRIVER_MEMORY: "1g"
-      SPARK_EXECUTOR_MEMORY: "1g"
+      SPARK_DRIVER_MEMORY: "768m"
+      SPARK_EXECUTOR_MEMORY: "768m"
     command: ["python3", "-m", "src.streaming.stream_processor"]
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 2048M
+          cpus: '0.75'
+          memory: 1536M
         reservations:
           memory: 512M
     networks:
@@ -364,6 +366,9 @@ services:
       AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: 'postgresql+psycopg2://${POSTGRES_USER:-riskgraph_user}:${POSTGRES_PASSWORD:-riskgraph_secure_pass}@postgres:5432/${POSTGRES_DB:-riskgraph}'
       AIRFLOW__CORE__EXECUTOR: 'LocalExecutor'
+      AIRFLOW__CORE__PARALLELISM: '2'
+      AIRFLOW__CORE__MAX_ACTIVE_TASKS_PER_DAG: '1'
+      AIRFLOW__SCHEDULER__MIN_FILE_PROCESS_INTERVAL: '60'
       AIRFLOW__WEBSERVER__BASE_URL: 'http://localhost:8080'
       AIRFLOW__WEBSERVER__EXPOSE_CONFIG: 'false'
       AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'false'
@@ -388,10 +393,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.75'
-          memory: 1536M
+          cpus: '0.50'
+          memory: 1280M
         reservations:
-          memory: 512M
+          memory: 384M
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
       interval: 15s
@@ -415,10 +420,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.25'
-          memory: 384M
+          cpus: '0.20'
+          memory: 256M
         reservations:
-          memory: 128M
+          memory: 64M
     networks:
       - riskgraph-prod-net
 
@@ -444,7 +449,7 @@ services:
       resources:
         limits:
           cpus: '0.25'
-          memory: 512M
+          memory: 384M
         reservations:
           memory: 128M
     networks:

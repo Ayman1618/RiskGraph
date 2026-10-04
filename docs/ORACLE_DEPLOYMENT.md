@@ -53,13 +53,14 @@ This guide provides step-by-step instructions to deploy the complete **RiskGraph
 
 ## 2. Oracle VM Requirements (Always Free)
 
-Oracle Cloud provides an **Always Free Ampere A1 Compute** allowance of up to 4 OCPUs and 24 GB of RAM, which can be allocated to a single virtual machine:
+The platform is optimized to run reliably on the standard long-term Always Free VM allocation:
 
 | Parameter | Recommended Free Tier Specification |
 | :--- | :--- |
 | **Shape** | `VM.Standard.A1.Flex` (Ampere ARM64) |
-| **OCPUs** | `4 OCPU` |
-| **Memory** | `24 GB RAM` |
+| **OCPUs** | `2 OCPU` |
+| **Memory** | `12 GB RAM` |
+| **Swap Space** | `4 GB` (Configured automatically by `setup_vm.sh`) |
 | **Operating System** | Canonical Ubuntu 22.04 / 24.04 LTS (AArch64) or Oracle Linux 8 / 9 |
 | **Boot Volume** | `100 GB - 200 GB` (Free tier provides up to 200 GB total) |
 | **Public IPv4** | Automatically assigned ephemeral or reserved public IP |
@@ -257,4 +258,4 @@ free -h
 df -h
 docker stats --no-stream
 ```
-*(Active baseline across all 12 services is ~7.5 GB RAM, safely within the 24 GB RAM limit of the Ampere A1 instance).*
+*(Active baseline across all 12 services is ~4.5 – 6.2 GB RAM with an 8.5 GB hard limit, safely within the 12 GB RAM + 4 GB swap capacity).*

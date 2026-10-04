@@ -61,6 +61,23 @@ net.core.somaxconn=1024
 EOF
 sysctl --system > /dev/null
 
+# 3b. Configure 4 GB NVMe Swap Space (Prevents OOM spikes on 12 GB RAM)
+if [ ! -f /swapfile ] && [ "$(swapon --show | wc -l)" -le 1 ]; then
+  log_info "Creating 4 GB swap file on NVMe boot volume for memory safety..."
+  fallocate -l 4G /swapfile 2>/dev/null || dd if=/dev/zero of=/swapfile bs=1M count=4096
+  chmod 600 /swapfile
+  mkswap /swapfile
+  swapon /swapfile
+  if ! grep -q "/swapfile" /etc/fstab; then
+    echo "/swapfile none swap sw 0 0" >> /etc/fstab
+  fi
+  sysctl vm.swappiness=10 > /dev/null
+  echo "vm.swappiness=10" >> /etc/sysctl.d/99-riskgraph.conf
+  log_success "4 GB swap file created and activated."
+else
+  log_info "Swap is already configured ($(free -h 2>/dev/null | awk '/Swap:/ {print $2}' || echo 'active'))."
+fi
+
 # 4. Install Docker Engine and Compose Plugin
 if ! command -v docker &> /dev/null; then
   log_info "Installing Docker Engine & Docker Compose Plugin..."
