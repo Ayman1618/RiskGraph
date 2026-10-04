@@ -165,10 +165,9 @@ make lint
 
 ---
 
-## 📚 Documentation Deep-Dives
-
 - 🏗️ [Architecture Deep-Dive](docs/ARCHITECTURE.md): Medallion Lakehouse design, stream-batch duality, Neo4j graph model.
 - 🛠️ [Setup & Operational Guide](docs/SETUP.md): Step-by-step local developer workflow and container management.
+- ☁️ [Oracle Cloud Always Free Deployment](docs/ORACLE_DEPLOYMENT.md): Step-by-step production deployment guide ($0/month) on Oracle Ampere A1 ARM64 VM.
 - 📋 [Project Completion Report](docs/project-completion-report.md): Verification artifacts, test logs, and Bureau JD alignment matrix.
 - 🎯 [Interview Preparation Guide](docs/interview-guide.md): Detailed questions and technically defensible answers tailored for Data Engineer interviews.
 

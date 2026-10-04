@@ -1,0 +1,467 @@
+version: '3.8'
+
+# ==============================================================================
+# RiskGraph Platform — Production Multi-Container Compose Configuration
+# Target: Oracle Cloud Always Free Ampere A1 (4 OCPU, 24 GB RAM, ARM64)
+#
+# Security Architecture:
+# - ONLY Nginx ports 80/443 are exposed to host/public internet.
+# - All internal services (PostgreSQL, Neo4j, Redis, Kafka, Zookeeper,
+#   LocalStack, Spark, Airflow, Prometheus, Grafana, API) are isolated
+#   within the private bridge network 'riskgraph-prod-net'.
+# ==============================================================================
+
+services:
+  # ==========================================
+  # 0. Edge Reverse Proxy & Static Host (Nginx)
+  # ==========================================
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: riskgraph-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./frontend:/usr/share/nginx/html:ro
+    depends_on:
+      api:
+        condition: service_healthy
+      grafana:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 256M
+        reservations:
+          memory: 64M
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost/nginx-health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - riskgraph-prod-net
+
+  # ==========================================
+  # 1. Real-Time Risk & Ingestion API (FastAPI)
+  # ==========================================
+  api:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile.api
+    container_name: riskgraph-api
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: production
+      LOG_LEVEL: INFO
+      APP_PORT: 8000
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-riskgraph}
+      POSTGRES_USER: ${POSTGRES_USER:-riskgraph_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-riskgraph_secure_pass}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: ${NEO4J_USER:-neo4j}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-riskgraph_graph_pass}
+      S3_ENDPOINT_URL: http://localstack:4566
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
+      AWS_REGION: us-east-1
+      AIRFLOW_URL: http://airflow:8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+        reservations:
+          memory: 256M
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - riskgraph-prod-net
+
+  # ==========================================
+  # 2. Relational Operational Store (PostgreSQL)
+  # ==========================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: riskgraph-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-riskgraph_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-riskgraph_secure_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-riskgraph}
+    volumes:
+      - ./sql/migrations:/docker-entrypoint-initdb.d:ro
+      - prod_postgres_data:/var/lib/postgresql/data
+    deploy:
+      resources:
+        limits:
+          cpus: '0.75'
+          memory: 1536M
+        reservations:
+          memory: 256M
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-riskgraph_user} -d ${POSTGRES_DB:-riskgraph}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - riskgraph-prod-net
+
+  # ==========================================
+  # 3. Identity Graph Database (Neo4j)
+  # ==========================================
+  neo4j:
+    image: neo4j:5.20.0-community
+    container_name: riskgraph-neo4j
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-riskgraph_graph_pass}
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_dbms_security_procedures_unrestricted: "apoc.*,gds.*"
+      NEO4J_server_memory_heap_initial__size: 512m
+      NEO4J_server_memory_heap_max__size: 1536m
+      NEO4J_server_memory_pagecache_size: 512m
+    volumes:
+      - prod_neo4j_data:/data
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2560M
+        reservations:
+          memory: 768M
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - riskgraph-prod-net
+
+  # ==========================================
+  # 4. In-Memory Velocity & Blacklist (Redis)
+  # ==========================================
+  redis:
+    image: redis:7.2-alpine
+    container_name: riskgraph-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    volumes:
+      - prod_redis_data:/data
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 384M
+        reservations:
+          memory: 64M
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - riskgraph-prod-net
+
+  # ==========================================
+  # 5. Messaging & Streaming Backbone (Kafka + ZK)
+  # ==========================================
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    container_name: riskgraph-zookeeper
+    restart: unless-stopped
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      KAFKA_HEAP_OPTS: "-Xms256m -Xmx512m"
+    volumes:
+      - prod_zookeeper_data:/var/lib/zookeeper/data
+      - prod_zookeeper_log:/var/lib/zookeeper/log
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 768M
+        reservations:
+          memory: 256M
+    healthcheck:
+      test: ["CMD-SHELL", "echo srvr | nc localhost 2181 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - riskgraph-prod-net
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: riskgraph-kafka
+    restart: unless-stopped
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_HEAP_OPTS: "-Xms512m -Xmx1024m"
+    volumes:
+      - prod_kafka_data:/var/lib/kafka/data
+    deploy:
+      resources:
+        limits:
+          cpus: '0.75'
+          memory: 1536M
+        reservations:
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "kafka:29092"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    networks:
+      - riskgraph-prod-net
+
+  kafka-init:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: riskgraph-kafka-init
+    restart: "no"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: [ '/bin/sh', '-c' ]
+    command: |
+      "
+      echo 'Checking Kafka connectivity...'
+      kafka-topics --bootstrap-server kafka:29092 --list
+      echo 'Creating production Kafka topics...'
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic fraud.transactions.raw --replication-factor 1 --partitions 4
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic fraud.identity.raw --replication-factor 1 --partitions 4
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic fraud.alerts --replication-factor 1 --partitions 2
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic fraud.dlq --replication-factor 1 --partitions 1
+      echo 'Production Kafka topics created successfully:'
+      kafka-topics --bootstrap-server kafka:29092 --list
+      "
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    networks:
+      - riskgraph-prod-net
+
+  # ==========================================
+  # 6. S3-Compatible Local Lakehouse (LocalStack)
+  # ==========================================
+  localstack:
+    image: localstack/localstack:3.4.0
+    container_name: riskgraph-localstack
+    restart: unless-stopped
+    environment:
+      SERVICES: s3
+      AWS_DEFAULT_REGION: us-east-1
+    volumes:
+      - ./deploy/localstack/init_s3.sh:/etc/localstack/init/ready.d/init_s3.sh:ro
+      - prod_localstack_data:/var/lib/localstack
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1024M
+        reservations:
+          memory: 256M
+    healthcheck:
+      test: ["CMD-SHELL", "awslocal s3 ls || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - riskgraph-prod-net
+
+  # ==========================================
+  # 7. PySpark Real-Time Streaming Processor
+  # ==========================================
+  stream-processor:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile.spark
+    container_name: riskgraph-stream-processor
+    restart: unless-stopped
+    depends_on:
+      kafka:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-riskgraph}
+      POSTGRES_USER: ${POSTGRES_USER:-riskgraph_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-riskgraph_secure_pass}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      S3_ENDPOINT_URL: http://localstack:4566
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
+      AWS_REGION: us-east-1
+      SPARK_MASTER: "local[2]"
+      SPARK_DRIVER_MEMORY: "1g"
+      SPARK_EXECUTOR_MEMORY: "1g"
+    command: ["python3", "-m", "src.streaming.stream_processor"]
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2048M
+        reservations:
+          memory: 512M
+    networks:
+      - riskgraph-prod-net
+
+  # ==========================================
+  # 8. Pipeline Orchestrator (Apache Airflow)
+  # ==========================================
+  airflow:
+    image: apache/airflow:2.8.3-python3.11
+    container_name: riskgraph-airflow
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: 'postgresql+psycopg2://${POSTGRES_USER:-riskgraph_user}:${POSTGRES_PASSWORD:-riskgraph_secure_pass}@postgres:5432/${POSTGRES_DB:-riskgraph}'
+      AIRFLOW__CORE__EXECUTOR: 'LocalExecutor'
+      AIRFLOW__WEBSERVER__BASE_URL: 'http://localhost:8080'
+      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: 'false'
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'false'
+      _PIP_ADDITIONAL_REQUIREMENTS: 'psycopg2-binary==2.9.9 redis==5.0.4 neo4j==5.20.0 boto3==1.34.100 pandas==2.2.2 pydantic==2.7.4'
+      PYTHONPATH: '/opt/airflow:/opt/airflow/src'
+      POSTGRES_HOST: 'postgres'
+      REDIS_HOST: 'redis'
+      NEO4J_URI: 'bolt://neo4j:7687'
+      NEO4J_USER: '${NEO4J_USER:-neo4j}'
+      NEO4J_PASSWORD: '${NEO4J_PASSWORD:-riskgraph_graph_pass}'
+      KAFKA_BOOTSTRAP_SERVERS: 'kafka:29092'
+      S3_ENDPOINT_URL: 'http://localstack:4566'
+      AWS_ACCESS_KEY_ID: '${AWS_ACCESS_KEY_ID:-test}'
+      AWS_SECRET_ACCESS_KEY: '${AWS_SECRET_ACCESS_KEY:-test}'
+      AWS_REGION: 'us-east-1'
+    volumes:
+      - ./dags:/opt/airflow/dags:ro
+      - ./src:/opt/airflow/src:ro
+      - ./sql:/opt/airflow/sql:ro
+      - prod_airflow_logs:/opt/airflow/logs
+    command: standalone
+    deploy:
+      resources:
+        limits:
+          cpus: '0.75'
+          memory: 1536M
+        reservations:
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+    networks:
+      - riskgraph-prod-net
+
+  # ==========================================
+  # 9. Observability: Prometheus & Grafana
+  # ==========================================
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    container_name: riskgraph-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prod_prometheus_data:/prometheus
+    depends_on:
+      - api
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 384M
+        reservations:
+          memory: 128M
+    networks:
+      - riskgraph-prod-net
+
+  grafana:
+    image: grafana/grafana:11.0.0
+    container_name: riskgraph-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s:%(http_port)s/grafana/"
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "Viewer"
+    volumes:
+      - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deploy/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - prod_grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 512M
+        reservations:
+          memory: 128M
+    networks:
+      - riskgraph-prod-net
+
+volumes:
+  prod_postgres_data:
+  prod_neo4j_data:
+  prod_redis_data:
+  prod_zookeeper_data:
+  prod_zookeeper_log:
+  prod_kafka_data:
+  prod_localstack_data:
+  prod_prometheus_data:
+  prod_grafana_data:
+  prod_airflow_logs:
+
+networks:
+  riskgraph-prod-net:
+    driver: bridge

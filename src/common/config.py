@@ -61,5 +61,8 @@ class Settings(BaseSettings):
     SPARK_DRIVER_MEMORY: str = "2g"
     SPARK_EXECUTOR_MEMORY: str = "2g"
 
+    # Airflow
+    AIRFLOW_URL: str = "http://localhost:8080"
+
 
 settings = Settings()

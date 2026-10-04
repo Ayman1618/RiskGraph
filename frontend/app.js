@@ -4,8 +4,15 @@
  * D3.js Graph Engine, and Live Telemetry
  */
 
-const API_BASE = 'http://localhost:8000/api/v1';
-const HEALTH_URL = 'http://localhost:8000/health';
+// Automatically resolve API endpoints:
+// In production behind Nginx reverse proxy on the same origin: use relative paths '/api/v1' and '/health'
+// In standalone local dev (e.g. port 3001 without proxy): fall back to 'http://localhost:8000'
+const isLocalStandalone = window.location.port === '3001' || 
+                          window.location.protocol === 'file:' || 
+                          (window.location.hostname === 'localhost' && window.location.port !== '80' && window.location.port !== '' && window.location.port !== '443');
+
+const API_BASE = isLocalStandalone ? 'http://localhost:8000/api/v1' : '/api/v1';
+const HEALTH_URL = isLocalStandalone ? 'http://localhost:8000/health' : '/health';
 
 // ===================================================
 // GLOBAL STATE
@@ -134,6 +141,18 @@ async function checkSystemStatus() {
     
     const now = new Date();
     timeEl.textContent = `Synced ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
+
+    const envBadge = document.getElementById('env-tag-badge');
+    const envLabel = document.getElementById('env-tag-label');
+    if (envBadge && envLabel) {
+      if (isLocalStandalone) {
+        envBadge.textContent = 'LOCAL';
+        envLabel.textContent = 'docker : 8000';
+      } else {
+        envBadge.textContent = 'CLOUD';
+        envLabel.textContent = window.location.hostname || 'riskgraph';
+      }
+    }
   } catch (err) {
     topDot.className = 'status-dot down';
     sideDot.className = 'status-dot down';

@@ -543,10 +543,11 @@ def get_pipeline_status():
     try:
         import requests as req_lib
 
-        r = req_lib.get("http://localhost:8080/health", timeout=2)
+        airflow_health_url = f"{settings.AIRFLOW_URL.rstrip('/')}/health"
+        r = req_lib.get(airflow_health_url, timeout=2)
         results["airflow"] = {"status": "HEALTHY" if r.status_code == 200 else "DEGRADED"}
     except Exception:
-        results["airflow"] = {"status": "UNKNOWN", "note": "Not running locally"}
+        results["airflow"] = {"status": "UNKNOWN", "note": "Not running locally or unreachable"}
 
     return {"checked_at": datetime.now(timezone.utc).isoformat(), "components": results}
 
